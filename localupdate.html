@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Page Update</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        #content {
+            padding: 20px;
+            border: 2px solid #333;
+            width: 300px;
+            margin: auto;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #clock {
+            font-size: 20px;
+            font-weight: bold;
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Dynamic Page Update Test</h2>
+
+    <!-- Section to update -->
+    <div id="content">
+        <p>This content will change.</p>
+    </div>
+    
+    <!-- Button to change content -->
+    <button onclick="updateContent()">Click to Change Content</button>
+
+    <hr>
+
+    <!-- Live clock -->
+    <h3>Live Clock</h3>
+    <div id="clock"></div>
+
+    <hr>
+
+    <!-- Placeholder for external content -->
+    <h3>Load External Content</h3>
+    <div id="external-content">Click to load content.</div>
+    <button onclick="loadExternalContent()">Load Content</button>
+
+    <script>
+        // Function to change content inside the div
+        function updateContent() {
+            document.getElementById("content").innerHTML = "<p>New content loaded dynamically!</p>";
+        }
+
+        // Function to update the clock every second
+        function updateClock() {
+            document.getElementById("clock").innerText = new Date().toLocaleTimeString();
+        }
+        setInterval(updateClock, 1000); // Update every second
+
+        // Function to load external content
+        function loadExternalContent() {
+            fetch("Inicio.html")  // Ensure test-content.html exists
+                .then(response => response.text())
+                .then(data => document.getElementById("external-content").innerHTML = data)
+                .catch(error => console.error("Error loading content:", error));
+        }
+    </script>
+
+</body>
+</html>

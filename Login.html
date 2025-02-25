@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whirpool Capacitation Log In</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: lightgray;
+        }
+
+        .container {
+            background-color: darkgrey;
+            width: 400px;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px; /* Adds space between elements */
+            padding: 20px;
+            border-radius: 10px; /* Rounded corners */
+        }
+
+        input {
+            width: 80%;
+            height: 40px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #333;
+            border-radius: 5px;
+        }
+
+        button {
+            width: 85%;
+            height: 45px;
+            background-color: white;
+            color: gray;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background-color: lightcyan;
+        }
+
+        .error {
+            color: red;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+    </style>
+    <script>
+        function redirect() {
+            const employeeNumber = document.getElementById("employee-number").value;
+            const password = document.getElementById("password").value;
+
+            // Predefined credentials (you can modify these as needed)
+            const validEmployeeNumber = "1";
+            const validPassword = "1";
+
+            // Check if the input matches the predefined credentials
+            if (employeeNumber === validEmployeeNumber && password === validPassword) {
+                window.location.href = "inicio.html"; // Redirect if valid
+            } else {
+                document.getElementById("error-message").innerText = "Invalid Employee Number or Password!";
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <img src="https://www.whirlpoolcorp.com/content/dam/business-unit/whirlpoolcorp/wp-content/upload/logos/WhirlpoolBRAND-notR-2017Logo_2C_W.png" width="300" height="100">
+        <h1>Log In</h1>
+        <input type="text" id="employee-number" placeholder="Employee Number">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="redirect()">Enter</button>
+        <p id="error-message" class="error"></p> <!-- Error message display -->
+    </div>
+</body>
+</html>

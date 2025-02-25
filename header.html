@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Administrator Whirlpool</title>
+    <link rel="stylesheet" href="estilos.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        /* Scrollable table styling */
+        .table-container {
+            position: absolute;
+            top: 200px;
+            left: 300px;
+            display: none; /* Initially hidden */
+            width: 1060px;
+            height: 500px; /* Set height to enable scrolling */
+            overflow-y: auto; /* Vertical scroll */
+            border: 1px solid #333;
+            margin: 20px auto;
+            background-color: white;
+            padding: 10px;
+        }
+
+        .Tablescroll {
+            position: absolute; /* Table positioned absolutely */
+            width: 1000px;
+            height: 400px; /* Set height to enable scrolling */
+            overflow-y: auto; /* Vertical scroll */
+            background-color: white;
+            padding: 30px;
+
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+
+        button {
+            padding: 10px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        th {
+            position: sticky; /* Make header sticky */
+            top: 0; /* Stick to the top of the table */
+            background-color: #f1f1f1; /* Optional: add a background color to make the header stand out */
+            z-index: 2; /* Ensures that the header stays on top of the table content */
+            border: 1px solid black; /* Optional: to keep the border of the header consistent with table cells */
+            padding: 8px;
+            text-align: center;
+        }
+
+        .addcourse {
+            position: absolute; /* Position relative to .table-container */
+            top: 10px; /* Distance from the top */
+            right: 10px; /* Distance from the right */
+            padding: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div style="width: auto; background-color: #333;">
+        <img src="https://www.whirlpoolcorp.com/content/dam/business-unit/whirlpoolcorp/wp-content/upload/logos/WhirlpoolBRAND-notR-2017Logo_2C_W.png" 
+             width="300" height="100" style="align-items: start;">
+        <header>
+            <h1>Curso de Capacitación</h1>
+        </header>
+    </div>
+
+    <main>
+        <div style="align-items: start;">
+        <section>
+            <h2>Programa del Curso</h2>
+            <table style="text-align: center;">
+                <tr>
+                    <th>Apartados</th>
+                </tr>
+                <tr>
+                    <td><a href="#" onclick="showTable()">Lista de Cursos</a></td>
+                </tr>
+                <tr>
+                    <td><a href="pagina3.html">Lista de Técnicos</a></td>
+                </tr>
+                <tr>
+                    <td><a href="pagina4.html">Preguntas y Respuestas</a></td>
+                </tr>
+            </table>
+        </section>
+        </div>
+
+        <!-- Scrollable Table (Initially Hidden) -->
+        <div id="courseTable" class="table-container">
+            <h3>Lista de Cursos</h3>
+            <button class="addcourse">Add course</button>
+            <div class="Tablescroll">
+            <table>
+                <tr>
+                    <th>Curso</th>
+                    <th>Duración</th>
+                    <th>Instructor</th>
+                </tr>
+                <tr>
+                    <td>Reparación de Lavadoras</td>
+                    <td>4 Semanas</td>
+                    <td>Juan Pérez</td>
+                </tr>
+                <tr>
+                    <td>Instalación de Secadoras</td>
+                    <td>3 Semanas</td>
+                    <td>Ana López</td>
+                </tr>
+                <tr>
+                    <td>Diagnóstico de Refrigeradores</td>
+                    <td>5 Semanas</td>
+                    <td>Carlos Martínez</td>
+                </tr>
+                <tr>
+                    <td>Reparación de Lavadoras</td>
+                    <td>4 Semanas</td>
+                    <td>Juan Pérez</td>
+                </tr>
+                <tr>
+                    <td>Instalación de Secadoras</td>
+                    <td>3 Semanas</td>
+                    <td>Ana López</td>
+                </tr>
+                <tr>
+                    <td>Diagnóstico de Refrigeradores</td>
+                    <td>5 Semanas</td>
+                    <td>Carlos Martínez</td>
+                </tr>
+                <tr>
+                    <td>Reparación de Lavadoras</td>
+                    <td>4 Semanas</td>
+                    <td>Juan Pérez</td>
+                </tr>
+                <tr>
+                    <td>Instalación de Secadoras</td>
+                    <td>3 Semanas</td>
+                    <td>Ana López</td>
+                </tr>
+                <tr>
+                    <td>Diagnóstico de Refrigeradores</td>
+                    <td>5 Semanas</td>
+                    <td>Carlos Martínez</td>
+                </tr>
+                <tr>
+                    <td>Reparación de Lavadoras</td>
+                    <td>4 Semanas</td>
+                    <td>Juan Pérez</td>
+                </tr>
+                <tr>
+                    <td>Instalación de Secadoras</td>
+                    <td>3 Semanas</td>
+                    <td>Ana López</td>
+                </tr>
+                <tr>
+                    <td>Diagnóstico de Refrigeradores</td>
+                    <td>5 Semanas</td>
+                    <td>Carlos Martínez</td>
+                </tr>
+                <tr>
+                    <td>Reparación de Lavadoras</td>
+                    <td>4 Semanas</td>
+                    <td>Juan Pérez</td>
+                </tr>
+                <tr>
+                    <td>Instalación de Secadoras</td>
+                    <td>3 Semanas</td>
+                    <td>Ana López</td>
+                </tr>
+                <tr>
+                    <td>Diagnóstico de Refrigeradores</td>
+                    <td>5 Semanas</td>
+                    <td>Carlos Martínez</td>
+                </tr>
+                <tr>
+                    <td>Reparación de Lavadoras</td>
+                    <td>4 Semanas</td>
+                    <td>Juan Pérez</td>
+                </tr>
+                <tr>
+                    <td>Instalación de Secadoras</td>
+                    <td>3 Semanas</td>
+                    <td>Ana López</td>
+                </tr>
+                <tr>
+                    <td>Diagnóstico de Refrigeradores</td>
+                    <td>5 Semanas</td>
+                    <td>Carlos Martínez</td>
+                </tr>
+            </table>
+            </div>
+        </div>
+
+        <section>
+            <h2>Requisitos del Curso</h2>
+            <ul>
+                <li>Requisito 1</li>
+                <li>Requisito 2</li>
+                <li>Requisito 3</li>
+            </ul>
+        </section>
+
+        <script>
+            function showTable() {
+                var tableDiv = document.getElementById("courseTable");
+                if (tableDiv.style.display === "none" || tableDiv.style.display === "") {
+                    tableDiv.style.display = "block"; // Show table
+                } else {
+                    tableDiv.style.display = "none"; // Hide table if clicked again
+                }
+            }
+
+            function out() {
+                window.location.href = "Log in.html";
+            }
+        </script>
+
+        <section style="margin-bottom: 0px;">
+            <button onclick="out()">Sign Out</button>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Curso de Capacitación</p>
+    </footer>
+
+</body>
+</html>
