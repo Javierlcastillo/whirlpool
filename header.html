@@ -92,7 +92,7 @@
                     <td><a href="#" onclick="showTable()">Lista de Cursos</a></td>
                 </tr>
                 <tr>
-                    <td><a href="pagina3.html">Lista de Técnicos</a></td>
+                    <td><a href="#" onclick="showpTable()">Lista de Técnicos</a></td>
                 </tr>
                 <tr>
                     <td><a href="pagina4.html">Preguntas y Respuestas</a></td>
@@ -101,10 +101,16 @@
         </section>
         </div>
 
+        <script>
+            function addcourse(){
+                window.location.href = "addcourse.html";
+            }
+        </script>
+
         <!-- Scrollable Table (Initially Hidden) -->
         <div id="courseTable" class="table-container">
             <h3>Lista de Cursos</h3>
-            <button class="addcourse">Add course</button>
+            <button class="addcourse" onclick="addcourse()">Add course</button>
             <div class="Tablescroll">
             <table>
                 <tr>
@@ -206,6 +212,42 @@
             </div>
         </div>
 
+        <div id="personelTable" class="table-container">
+            <h3>Lista de Tecnicos</h3>
+            <button class="addcourse" onclick="addcourse()">Add Employee</button>
+            <div class="Tablescroll">
+            <table>
+                <tr>
+                    <th>Employee</th>
+                    <th>Employee #</th>
+                    <th>Region</th>
+                </tr>
+                <tr>
+                    <td>Juan</td>
+                    <td>123</td>
+                    <td>Noroeste</td>
+                </tr>
+                <tr>
+                    <td>Peres</td>
+                    <td>234</td>
+                    <td>Sur</td>
+                </tr>
+                <tr>
+                    <td>Pedro</td>
+                    <td>345</td>
+                    <td>Centro</td>
+                </tr>
+                <tr>
+                    <td>Javier</td>
+                    <td>456</td>
+                    <td>Norte</td>
+                </tr>
+    
+               
+               
+            </table>
+            </div>
+        </div>
         <section>
             <h2>Requisitos del Curso</h2>
             <ul>
@@ -217,11 +259,28 @@
 
         <script>
             function showTable() {
-                var tableDiv = document.getElementById("courseTable");
-                if (tableDiv.style.display === "none" || tableDiv.style.display === "") {
-                    tableDiv.style.display = "block"; // Show table
+                var courseTable = document.getElementById("courseTable");
+                var personnelTable = document.getElementById("personelTable");
+
+                // Show Course Table, Hide Personnel Table
+                if (courseTable.style.display === "none" || courseTable.style.display === "") {
+                    courseTable.style.display = "block";
+                    personnelTable.style.display = "none"; // Hide the other table
                 } else {
-                    tableDiv.style.display = "none"; // Hide table if clicked again
+                    courseTable.style.display = "none";
+                }
+            }
+
+            function showpTable() {
+                var courseTable = document.getElementById("courseTable");
+                var personnelTable = document.getElementById("personelTable");
+
+                // Show Personnel Table, Hide Course Table
+                if (personnelTable.style.display === "none" || personnelTable.style.display === "") {
+                    personnelTable.style.display = "block";
+                    courseTable.style.display = "none"; // Hide the other table
+                } else {
+                    personnelTable.style.display = "none";
                 }
             }
 

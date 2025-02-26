@@ -20,6 +20,19 @@
                 border-radius: 5px;
                 background-color: #f9f9f9;
             }
+            .sbutton {
+                position: absolute;
+                padding: 10px;
+                cursor: pointer;
+                right: 5%;
+            }
+
+            .ebutton {
+                position: absolute;
+                padding: 10px;
+                cursor: pointer;
+                right: 1%;
+            }
             .question {
                 overflow-y: auto;
             }
@@ -92,6 +105,14 @@
                 questionContainer.appendChild(answersContainer);
                 document.getElementById("questions").appendChild(questionContainer);
             }
+
+            function sbuttonclick(){
+                window.location.href = "header.html"
+            }
+
+            function ebuttonclick(){
+                window.location.href = "header.html"
+            }
         </script>
     </head>
     <body>
@@ -107,6 +128,8 @@
             </div>
             
             <button class="add-button" onclick="addQuestion()">Add Question</button>
+            <button class="sbutton" onclick="sbuttonclick()">Save</button>
+            <button class="ebutton" onclick="ebuttonclick()">Exit</button>
             <div class = "answerd">
             <div id="questions"></div>
             </div>
