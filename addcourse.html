@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Course Administrator Whirlpool</title>
+        <link rel="stylesheet" href="estilos.css">
+        <style>
+            .container {
+                width: 60%;
+                margin: auto;
+            }
+            .centertext{
+                text-align: center;
+            }
+            .course-title, .question, .answers div {
+                border: 1px solid #ccc;
+                padding: 10px;
+                margin: 10px 0;
+                border-radius: 5px;
+                background-color: #f9f9f9;
+            }
+            .question {
+                overflow-y: auto;
+            }
+            .answers {
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+            }
+            .add-button {
+                background-color: #007bff;
+                color: white;
+                border: none;
+                padding: 10px;
+                cursor: pointer;
+                border-radius: 5px;
+            }
+            .answerd{
+                padding: 10px;
+                max-height: 400px;
+                overflow-y: auto;
+            }
+            .foot{
+                position: absolute;
+                background-color: #333;
+                color: #fff;
+                padding: 20px;
+                text-align: center;
+                clear: both;
+                width: 100%;
+                bottom: 0px;
+            }
+        </style>
+        <script>
+            function addQuestion() {
+                let questionContainer = document.createElement("div");
+                questionContainer.classList.add("question");
+                
+                let questionTitle = document.createElement("input");
+                questionTitle.type = "text";
+                questionTitle.placeholder = "Enter question";
+                questionTitle.classList.add("course-title");
+
+                let mediaInput = document.createElement("input");
+                mediaInput.type = "file";
+                mediaInput.accept = "image/*, video/*, audio/*";
+
+                questionContainer.appendChild(questionTitle);
+                questionContainer.appendChild(mediaInput);
+                
+                let answersContainer = document.createElement("div");
+                answersContainer.classList.add("answers");
+                
+                for (let i = 0; i < 3; i++) {
+                    let answerDiv = document.createElement("div");
+                    let answerInput = document.createElement("input");
+                    answerInput.type = "text";
+                    answerInput.placeholder = "Answer " + (i + 1);
+                    answerDiv.classList.add("course-title");
+                    
+                    let mediaInput = document.createElement("input");
+                    mediaInput.type = "file";
+                    mediaInput.accept = "image/*, video/*, audio/*";
+                    
+                    answerDiv.appendChild(answerInput);
+                    answerDiv.appendChild(mediaInput);
+                    answersContainer.appendChild(answerDiv);
+                }
+                
+                questionContainer.appendChild(questionTitle);
+                questionContainer.appendChild(answersContainer);
+                document.getElementById("questions").appendChild(questionContainer);
+            }
+        </script>
+    </head>
+    <body>
+        <div style="width: auto; background-color: #333;">
+        <img src="https://www.whirlpoolcorp.com/content/dam/business-unit/whirlpoolcorp/wp-content/upload/logos/WhirlpoolBRAND-notR-2017Logo_2C_W.png" width="300" height="100" style="align-items: start;">
+        <header>
+            <h1>Agregar Cursos</h1>
+        </header>
+        </div>
+            <div class="course-title centertext" >
+                <label for="courseTitle">Course Title:</label>
+                <input type="text" id="courseTitle" placeholder="Enter course title">
+            </div>
+            
+            <button class="add-button" onclick="addQuestion()">Add Question</button>
+            <div class = "answerd">
+            <div id="questions"></div>
+            </div>
+        </div>
+    </body>
+
+    <footer class="foot">
+        <p>&copy; 2025 Curso de Capacitación</p>
+    </footer>
+</html>
