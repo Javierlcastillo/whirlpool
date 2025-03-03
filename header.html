@@ -4,403 +4,323 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Course Administrator Whirlpool</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Estilos personalizados -->
     <link rel="stylesheet" href="estilos.css">
-    <style>
-
-        .employee-form {
-            background-color: #f7f7f7;
-            position: absolute;
-            top: 35%;
-            left: 30%;
-            width: 400px;
-            padding: 20px;
-            z-index: 1000;
-            border-radius: 10px;
-            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.3);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            display: none;
-        }
-
-        .employee-form label {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .employee-form input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #333;
-            border-radius: 5px;
-        }
-
-        .button-container {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .button-container button {
-            padding: 8px 15px;
-            cursor: pointer;
-            border: none;
-            border-radius: 5px;
-            background-color: #007bff;
-            color: white;
-            font-weight: bold;
-        }
-
-        .button-container button:hover {
-            background-color: #0056b3;
-        }
-
-        .button-container .cancel {
-            background-color: red;
-        }
-
-        .button-container .cancel:hover {
-            background-color: darkred;
-        }
-        body {
-            font-family: Arial, sans-serif;
-        }
-
-        /* Scrollable table styling */
-        .table-container {
-            position: absolute;
-            top: 200px;
-            left: 300px;
-            display: none; /* Initially hidden */
-            width: 1060px;
-            height: 500px; /* Set height to enable scrolling */
-            overflow-y: auto; /* Vertical scroll */
-            border: 1px solid #333;
-            margin: 20px auto;
-            background-color: white;
-            padding: 10px;
-        }
-
-        .Tablescroll {
-            position: absolute; /* Table positioned absolutely */
-            width: 1000px;
-            height: 400px; /* Set height to enable scrolling */
-            overflow-y: auto; /* Vertical scroll */
-            background-color: white;
-            padding: 30px;
-
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            border: 1px solid black;
-            padding: 8px;
-            text-align: center;
-        }
-
-        button {
-            padding: 10px;
-            margin-top: 10px;
-            cursor: pointer;
-        }
-        th {
-            position: sticky; /* Make header sticky */
-            top: 0; /* Stick to the top of the table */
-            background-color: #f1f1f1; /* Optional: add a background color to make the header stand out */
-            z-index: 2; /* Ensures that the header stays on top of the table content */
-            border: 1px solid black; /* Optional: to keep the border of the header consistent with table cells */
-            padding: 8px;
-            text-align: center;
-        }
-
-        .addcourse {
-            position: absolute; /* Position relative to .table-container */
-            top: 10px; /* Distance from the top */
-            right: 10px; /* Distance from the right */
-            padding: 10px;
-            cursor: pointer;
-        }
-    </style>
 </head>
 <body>
-
-    <div style="width: auto; background-color: #333;">
-        <img src="https://www.whirlpoolcorp.com/content/dam/business-unit/whirlpoolcorp/wp-content/upload/logos/WhirlpoolBRAND-notR-2017Logo_2C_W.png" 
-             width="300" height="100" style="align-items: start;">
-        <header>
-            <h1>Curso de Capacitación</h1>
-        </header>
+    <!-- Header con logo -->
+    <div class="logo-container">
+        <div class="container">
+            <img src="https://www.whirlpoolcorp.com/content/dam/business-unit/whirlpoolcorp/wp-content/upload/logos/WhirlpoolBRAND-notR-2017Logo_2C_W.png" class="logo-img" alt="Whirlpool Logo">
+        </div>
     </div>
 
-    <main>
-        <div style="align-items: start;">
-        <section>
-            <h2>Programa del Curso</h2>
-            <table style="text-align: center;">
-                <tr>
-                    <th>Apartados</th>
-                </tr>
-                <tr>
-                    <td><a href="#" onclick="showTable()">Lista de Cursos</a></td>
-                </tr>
-                <tr>
-                    <td><a href="#" onclick="showpTable()">Lista de Técnicos</a></td>
-                </tr>
-                <tr>
-                    <td><a href="pagina4.html">Preguntas y Respuestas</a></td>
-                </tr>
-            </table>
-        </section>
+    <!-- Header principal -->
+    <header class="page-header text-center">
+        <div class="container">
+            <h1 class="display-5">Sistema de Capacitación</h1>
         </div>
+    </header>
 
-        <script>
-            function addcourse(){
-                window.location.href = "addcourse.html";
-            }
-        </script>
+    <!-- Contenido principal -->
+    <main class="container main-content py-4">
+        <div class="row">
+            <!-- Menú de navegación -->
+            <div class="col-lg-4 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="h4 mb-0">Programa del Curso</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group">
+                            <a href="#" class="list-group-item list-group-item-action" 
+                               id="showCoursesBtn">
+                                <i class="fas fa-list-ul me-2"></i>Lista de Cursos
+                            </a>
+                            <a href="#" class="list-group-item list-group-item-action" 
+                               id="showTechniciansBtn">
+                                <i class="fas fa-users me-2"></i>Lista de Técnicos
+                            </a>
+                            <a href="pagina4.html" class="list-group-item list-group-item-action">
+                                <i class="fas fa-question-circle me-2"></i>Preguntas y Respuestas
+                            </a>
+                        </div>
+                    </div>
+                </div>
 
-        <!-- Scrollable Table (Initially Hidden) -->
-        <div id="courseTable" class="table-container">
-            <h3>Lista de Cursos</h3>
-            <button class="addcourse" onclick="addcourse()">Add course</button>
-            <div class="Tablescroll">
-            <table>
-                <tr>
-                    <th>Curso</th>
-                    <th>Duración</th>
-                    <th>Instructor</th>
-                </tr>
-                <tr>
-                    <td>Reparación de Lavadoras</td>
-                    <td>4 Semanas</td>
-                    <td>Juan Pérez</td>
-                </tr>
-                <tr>
-                    <td>Instalación de Secadoras</td>
-                    <td>3 Semanas</td>
-                    <td>Ana López</td>
-                </tr>
-                <tr>
-                    <td>Diagnóstico de Refrigeradores</td>
-                    <td>5 Semanas</td>
-                    <td>Carlos Martínez</td>
-                </tr>
-                <tr>
-                    <td>Reparación de Lavadoras</td>
-                    <td>4 Semanas</td>
-                    <td>Juan Pérez</td>
-                </tr>
-                <tr>
-                    <td>Instalación de Secadoras</td>
-                    <td>3 Semanas</td>
-                    <td>Ana López</td>
-                </tr>
-                <tr>
-                    <td>Diagnóstico de Refrigeradores</td>
-                    <td>5 Semanas</td>
-                    <td>Carlos Martínez</td>
-                </tr>
-                <tr>
-                    <td>Reparación de Lavadoras</td>
-                    <td>4 Semanas</td>
-                    <td>Juan Pérez</td>
-                </tr>
-                <tr>
-                    <td>Instalación de Secadoras</td>
-                    <td>3 Semanas</td>
-                    <td>Ana López</td>
-                </tr>
-                <tr>
-                    <td>Diagnóstico de Refrigeradores</td>
-                    <td>5 Semanas</td>
-                    <td>Carlos Martínez</td>
-                </tr>
-                <tr>
-                    <td>Reparación de Lavadoras</td>
-                    <td>4 Semanas</td>
-                    <td>Juan Pérez</td>
-                </tr>
-                <tr>
-                    <td>Instalación de Secadoras</td>
-                    <td>3 Semanas</td>
-                    <td>Ana López</td>
-                </tr>
-                <tr>
-                    <td>Diagnóstico de Refrigeradores</td>
-                    <td>5 Semanas</td>
-                    <td>Carlos Martínez</td>
-                </tr>
-                <tr>
-                    <td>Reparación de Lavadoras</td>
-                    <td>4 Semanas</td>
-                    <td>Juan Pérez</td>
-                </tr>
-                <tr>
-                    <td>Instalación de Secadoras</td>
-                    <td>3 Semanas</td>
-                    <td>Ana López</td>
-                </tr>
-                <tr>
-                    <td>Diagnóstico de Refrigeradores</td>
-                    <td>5 Semanas</td>
-                    <td>Carlos Martínez</td>
-                </tr>
-                <tr>
-                    <td>Reparación de Lavadoras</td>
-                    <td>4 Semanas</td>
-                    <td>Juan Pérez</td>
-                </tr>
-                <tr>
-                    <td>Instalación de Secadoras</td>
-                    <td>3 Semanas</td>
-                    <td>Ana López</td>
-                </tr>
-                <tr>
-                    <td>Diagnóstico de Refrigeradores</td>
-                    <td>5 Semanas</td>
-                    <td>Carlos Martínez</td>
-                </tr>
-            </table>
+                <!-- Sección de requisitos -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h2 class="h4 mb-0">Requisitos del Curso</h2>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i>Credencial de empleado vigente</li>
+                            <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i>Contar con equipo de seguridad completo</li>
+                            <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i>Aprobar evaluación inicial</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Botón de cierre de sesión -->
+                <div class="d-grid mt-4">
+                    <button id="signOutBtn" class="btn btn-outline-danger">
+                        <i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Área de contenido dinámico -->
+            <div class="col-lg-8">
+                <!-- Lista de Cursos -->
+                <div id="courseTable" class="card mb-4 d-none">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="h4 mb-0">Lista de Cursos</h3>
+                        <a href="addcourse.html" class="btn btn-whirlpool btn-sm">
+                            <i class="fas fa-plus me-1"></i>Agregar Curso
+                        </a>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 500px;">
+                            <table class="table table-hover table-striped mb-0">
+                                <thead class="table-dark sticky-top">
+                                    <tr>
+                                        <th>Curso</th>
+                                        <th>Duración</th>
+                                        <th>Instructor</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Reparación de Lavadoras</td>
+                                        <td>4 Semanas</td>
+                                        <td>Juan Pérez</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary"><i class="fas fa-edit"></i></button>
+                                                <button class="btn btn-outline-danger"><i class="fas fa-trash"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Instalación de Secadoras</td>
+                                        <td>3 Semanas</td>
+                                        <td>Ana López</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary"><i class="fas fa-edit"></i></button>
+                                                <button class="btn btn-outline-danger"><i class="fas fa-trash"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Diagnóstico de Refrigeradores</td>
+                                        <td>5 Semanas</td>
+                                        <td>Carlos Martínez</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary"><i class="fas fa-edit"></i></button>
+                                                <button class="btn btn-outline-danger"><i class="fas fa-trash"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <!-- Se pueden agregar más filas aquí -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lista de Técnicos -->
+                <div id="personelTable" class="card mb-4 d-none">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="h4 mb-0">Lista de Técnicos</h3>
+                        <button class="btn btn-whirlpool btn-sm" data-bs-toggle="modal" data-bs-target="#employeeModal">
+                            <i class="fas fa-user-plus me-1"></i>Agregar Técnico
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 500px;">
+                            <table class="table table-hover table-striped mb-0">
+                                <thead class="table-dark sticky-top">
+                                    <tr>
+                                        <th>Técnico</th>
+                                        <th>Número de Empleado</th>
+                                        <th>Región</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Juan Pérez</td>
+                                        <td>123</td>
+                                        <td>Noroeste</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary"><i class="fas fa-edit"></i></button>
+                                                <button class="btn btn-outline-danger"><i class="fas fa-trash"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Ana López</td>
+                                        <td>234</td>
+                                        <td>Sur</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary"><i class="fas fa-edit"></i></button>
+                                                <button class="btn btn-outline-danger"><i class="fas fa-trash"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Pedro Sánchez</td>
+                                        <td>345</td>
+                                        <td>Centro</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary"><i class="fas fa-edit"></i></button>
+                                                <button class="btn btn-outline-danger"><i class="fas fa-trash"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Javier Rodríguez</td>
+                                        <td>456</td>
+                                        <td>Norte</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary"><i class="fas fa-edit"></i></button>
+                                                <button class="btn btn-outline-danger"><i class="fas fa-trash"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <div id="personelTable" class="table-container">
-            <h3>Lista de Tecnicos</h3>
-            <button class="addcourse" onclick="addnewemployee()">Add Employee</button>
-            <div class="Tablescroll">
-            <table>
-                <tr>
-                    <th>Employee</th>
-                    <th>Employee #</th>
-                    <th>Region</th>
-                </tr>
-                <tr>
-                    <td>Juan</td>
-                    <td>123</td>
-                    <td>Noroeste</td>
-                </tr>
-                <tr>
-                    <td>Peres</td>
-                    <td>234</td>
-                    <td>Sur</td>
-                </tr>
-                <tr>
-                    <td>Pedro</td>
-                    <td>345</td>
-                    <td>Centro</td>
-                </tr>
-                <tr>
-                    <td>Javier</td>
-                    <td>456</td>
-                    <td>Norte</td>
-                </tr>
-    
-               
-               
-            </table>
-            </div>
-        </div>
-        <section>
-            <h2>Requisitos del Curso</h2>
-            <ul>
-                <li>Requisito 1</li>
-                <li>Requisito 2</li>
-                <li>Requisito 3</li>
-            </ul>
-        </section>
-
-        <script>
-            function showTable() {
-                var courseTable = document.getElementById("courseTable");
-                var personnelTable = document.getElementById("personelTable");
-
-                // Show Course Table, Hide Personnel Table
-                if (courseTable.style.display === "none" || courseTable.style.display === "") {
-                    courseTable.style.display = "block";
-                    personnelTable.style.display = "none"; // Hide the other table
-                } else {
-                    courseTable.style.display = "none";
-                }
-            }
-
-            function showpTable() {
-                var courseTable = document.getElementById("courseTable");
-                var personnelTable = document.getElementById("personelTable");
-
-                // Show Personnel Table, Hide Course Table
-                if (personnelTable.style.display === "none" || personnelTable.style.display === "") {
-                    personnelTable.style.display = "block";
-                    courseTable.style.display = "none"; // Hide the other table
-                } else {
-                    personnelTable.style.display = "none";
-                }
-            }
-
-            function out() {
-                window.location.href = "Log in.html";
-            }
-
-
-            function addnewemployee(){
-                var personelform = document.getElementById("employee-form");
-
-                if(personelform.style.display === "none" || personelform.style.display === ""){
-                    personelform.style.display = "block";
-                }else {
-                    personelform.style.display = "none";
-                }
-            }
-
-            function saveemployee(){
-                var personelform = document.getElementById("employee-form");
-                if(personelform.style.display === "block"){
-                    personelform.style.display = "none";
-                } else {
-                    personelform.style.display = "none";
-                }
-            }
-
-            function cancelemployee(){
-                var personelform = document.getElementById("employee-form");
-                if(personelform.style.display === "block"){
-                    personelform.style.display = "none";
-                } else {
-                    personelform.style.display = "none";
-                }
-            }
-        </script>
-        <div class="employee-form" id="employee-form">
-            <label>Name</label>
-            <input type="text" id="employeeName">
-        
-            <label>Number</label>
-            <input type="number" id="employeeNumber">
-        
-            <label>Region</label>
-            <input type="text" id="employeeRegion">
-        
-            <label>Password</label>
-            <input type="password" id="EmployeePassword">
-        
-            <div class="button-container">
-                <button class="cancel" onclick="cancelemployee()">Cancel</button>
-                <button onclick="saveemployee()">Save</button>
-            </div>
-        </div>
-        
-        <section style="margin-bottom: 0px;">
-            <button onclick="out()">Sign Out</button>
-        </section>
     </main>
 
-    <footer>
-        <p>&copy; 2025 Curso de Capacitación</p>
+    <!-- Modal para Agregar Empleado -->
+    <div class="modal fade" id="employeeModal" tabindex="-1" aria-labelledby="employeeModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="employeeModalLabel">Agregar Nuevo Técnico</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="employeeForm">
+                        <div class="mb-3">
+                            <label for="employeeName" class="form-label">Nombre Completo</label>
+                            <input type="text" class="form-control" id="employeeName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="employeeNumber" class="form-label">Número de Empleado</label>
+                            <input type="number" class="form-control" id="employeeNumber" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="employeeRegion" class="form-label">Región</label>
+                            <select class="form-select" id="employeeRegion" required>
+                                <option value="">Seleccionar región...</option>
+                                <option value="Norte">Norte</option>
+                                <option value="Sur">Sur</option>
+                                <option value="Este">Este</option>
+                                <option value="Oeste">Oeste</option>
+                                <option value="Centro">Centro</option>
+                                <option value="Noroeste">Noroeste</option>
+                                <option value="Noreste">Noreste</option>
+                                <option value="Suroeste">Suroeste</option>
+                                <option value="Sureste">Sureste</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="employeePassword" class="form-label">Contraseña</label>
+                            <input type="password" class="form-control" id="employeePassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="employeePasswordConfirm" class="form-label">Confirmar Contraseña</label>
+                            <input type="password" class="form-control" id="employeePasswordConfirm" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="saveEmployeeBtn">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer text-center">
+        <div class="container">
+            <p class="mb-0">&copy; 2025 Whirlpool Corporation - Sistema de Capacitación</p>
+        </div>
     </footer>
 
+    <!-- Bootstrap JS y Popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
+    
+    <!-- Script personalizado -->
+    <script>
+        // Mostrar/ocultar tablas
+        document.getElementById('showCoursesBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('courseTable').classList.remove('d-none');
+            document.getElementById('personelTable').classList.add('d-none');
+        });
+        
+        document.getElementById('showTechniciansBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('personelTable').classList.remove('d-none');
+            document.getElementById('courseTable').classList.add('d-none');
+        });
+        
+        // Cerrar sesión
+        document.getElementById('signOutBtn').addEventListener('click', function() {
+            window.location.href = "Login.html";
+        });
+        
+        // Guardar empleado
+        document.getElementById('saveEmployeeBtn').addEventListener('click', function() {
+            // Validación básica
+            const name = document.getElementById('employeeName').value;
+            const number = document.getElementById('employeeNumber').value;
+            const region = document.getElementById('employeeRegion').value;
+            const password = document.getElementById('employeePassword').value;
+            const passwordConfirm = document.getElementById('employeePasswordConfirm').value;
+            
+            if (!name || !number || !region || !password) {
+                alert('Por favor complete todos los campos');
+                return;
+            }
+            
+            if (password !== passwordConfirm) {
+                alert('Las contraseñas no coinciden');
+                return;
+            }
+            
+            // En un sistema real, aquí enviaríamos los datos al servidor
+            // Para esta demostración, simplemente cerramos el modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('employeeModal'));
+            modal.hide();
+            
+            // Mostrar notificación
+            alert('Técnico agregado correctamente');
+            
+            // Limpiar formulario
+            document.getElementById('employeeForm').reset();
+        });
+    </script>
 </body>
 </html>
