@@ -33,6 +33,8 @@ class Technician(models.Model):
         default='centro',
         verbose_name='Región'
     )
+    is_active = models.BooleanField(default=True, verbose_name='Activo')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
     
     class Meta:
         verbose_name = 'Técnico'
@@ -43,3 +45,6 @@ class Technician(models.Model):
     
     def get_absolute_url(self):
         return reverse('technician-detail', kwargs={'pk': self.pk})
+    
+    def get_full_name(self):
+        return self.user.get_full_name() or self.user.username

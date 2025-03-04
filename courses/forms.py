@@ -2,7 +2,7 @@ from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, HTML
 
-from .models import Course, Question, Answer
+from .models import Course, Section, Question, Answer
 
 class CourseForm(forms.ModelForm):
     """Formulario para crear/editar cursos."""
@@ -40,14 +40,25 @@ class CourseForm(forms.ModelForm):
             )
         )
 
+class SectionForm(forms.ModelForm):
+    """Formulario para crear/editar secciones informativas."""
+    
+    class Meta:
+        model = Section
+        fields = ['title', 'text', 'image', 'video_url', 'order']
+        widgets = {
+            'text': forms.Textarea(attrs={'rows': 4}),
+        }
+
 class QuestionForm(forms.ModelForm):
     """Formulario para crear/editar preguntas."""
     
     class Meta:
         model = Question
-        fields = ['text', 'image', 'order']
+        fields = ['title', 'text', 'image', 'explanation', 'order']
         widgets = {
-            'text': forms.Textarea(attrs={'rows': 2}),
+            'text': forms.Textarea(attrs={'rows': 3}),
+            'explanation': forms.Textarea(attrs={'rows': 2}),
         }
 
 class AnswerForm(forms.ModelForm):
