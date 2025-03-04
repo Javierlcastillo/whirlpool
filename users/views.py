@@ -1,7 +1,6 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.views import LoginView, LogoutView
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from django.contrib import messages
@@ -9,6 +8,16 @@ from django.contrib.auth.models import User
 
 from .models import Technician
 from .forms import TechnicianForm, UserForm, CustomAuthenticationForm
+
+# Crear el mixin para restricción a superusuarios
+class SuperuserRequiredMixin:
+    """Mixin que restringe el acceso solo a superusuarios."""
+    
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated or not request.user.is_superuser:
+            messages.error(request, "Acceso denegado. Solo administradores tienen permiso para acceder.")
+            return redirect('login')
+        return super().dispatch(request, *args, **kwargs)
 
 class CustomLoginView(LoginView):
     """Vista personalizada para login."""
@@ -24,14 +33,14 @@ class CustomLogoutView(LogoutView):
     """Vista personalizada para logout."""
     next_page = 'login'
 
-class TechnicianListView(LoginRequiredMixin, ListView):
+class TechnicianListView(SuperuserRequiredMixin, ListView):
     """Vista para listar todos los técnicos."""
     model = Technician
     template_name = 'users/technician_list.html'
     context_object_name = 'technicians'
     paginate_by = 10
 
-class TechnicianDetailView(LoginRequiredMixin, DetailView):
+class TechnicianDetailView(SuperuserRequiredMixin, DetailView):
     """Vista para ver detalles de un técnico específico."""
     model = Technician
     template_name = 'users/technician_detail.html'
@@ -43,7 +52,7 @@ class TechnicianDetailView(LoginRequiredMixin, DetailView):
         context['courses_teaching'] = self.object.courses_teaching.all()
         return context
 
-class TechnicianCreateView(LoginRequiredMixin, CreateView):
+class TechnicianCreateView(SuperuserRequiredMixin, CreateView):
     """Vista para crear un nuevo técnico."""
     model = Technician
     template_name = 'users/technician_form.html'
@@ -67,6 +76,9 @@ class TechnicianCreateView(LoginRequiredMixin, CreateView):
         if form.is_valid() and user_form.is_valid():
             user = user_form.save(commit=False)
             user.set_password(user_form.cleaned_data['password'])
+            # Asegúrate de que los nuevos técnicos NO sean superusuarios
+            user.is_superuser = False
+            user.is_staff = False
             user.save()
             
             technician = form.save(commit=False)
@@ -80,7 +92,7 @@ class TechnicianCreateView(LoginRequiredMixin, CreateView):
                 self.get_context_data(form=form, user_form=user_form)
             )
 
-class TechnicianUpdateView(LoginRequiredMixin, UpdateView):
+class TechnicianUpdateView(SuperuserRequiredMixin, UpdateView):
     """Vista para actualizar un técnico existente."""
     model = Technician
     template_name = 'users/technician_form.html'
@@ -101,7 +113,12 @@ class TechnicianUpdateView(LoginRequiredMixin, UpdateView):
         user_form = UserForm(request.POST, instance=self.object.user)
         
         if form.is_valid() and user_form.is_valid():
-            user = user_form.save()
+            user = user_form.save(commit=False)
+            # Mantener al técnico sin privilegios de superusuario
+            user.is_superuser = False
+            user.is_staff = False
+            user.save()
+            
             technician = form.save()
             
             messages.success(request, 'Técnico actualizado exitosamente')
@@ -111,7 +128,7 @@ class TechnicianUpdateView(LoginRequiredMixin, UpdateView):
                 self.get_context_data(form=form, user_form=user_form)
             )
 
-class TechnicianDeleteView(LoginRequiredMixin, DeleteView):
+class TechnicianDeleteView(SuperuserRequiredMixin, DeleteView):
     """Vista para eliminar un técnico."""
     model = Technician
     template_name = 'users/technician_confirm_delete.html'

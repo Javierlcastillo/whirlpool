@@ -12,6 +12,10 @@ from .forms import CourseForm, QuestionForm, AnswerForm
 @login_required
 def dashboard(request):
     """Vista para el dashboard principal."""
+    if not request.user.is_superuser:
+        messages.error(request, "Acceso denegado. Solo administradores tienen permiso para acceder.")
+        return redirect('login')
+    
     courses_count = Course.objects.count()
     context = {
         'courses_count': courses_count,

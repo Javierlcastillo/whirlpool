@@ -10,12 +10,6 @@
 <div class="row justify-content-center">
     <div class="col-md-6 col-lg-5">
         <div class="login-card">
-            <!-- Logo container -->
-            <div class="logo-container text-center p-4 bg-dark">
-                <img src="{{ STATIC_URL }}img/whirlpool-logo.png" 
-                     class="img-fluid" style="max-width: 220px;" alt="Whirlpool Logo">
-            </div>
-            
             <!-- Login header -->
             <div class="card-header bg-primary text-white text-center py-3">
                 <h2 class="h4 mb-0">Iniciar Sesión</h2>
@@ -52,18 +46,16 @@
     }
     
     body {
-        background-color: #f8f9fa;
+        background-color:rgb(175, 175, 175); /* Cambiado a un fondo oscuro que coincide con el tema dark */
     }
     
     .login-card {
         border-radius: 0.5rem;
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
         overflow: hidden;
-        background-color: white;
+        background-color: #1e1e1e; /* Ajustado para el tema oscuro */
     }
     
-    .logo-container {
-        border-radius: 0.5rem 0.5rem 0 0;
-    }
+    /* Se eliminó la definición de .logo-container ya que se eliminó ese elemento */
 </style>
 {% endblock %}
