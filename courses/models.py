@@ -99,18 +99,3 @@ class Answer(models.Model):
     
     def __str__(self):
         return f"Respuesta para {self.question}"
-
-
-class FAQ(models.Model):
-    """Modelo para preguntas frecuentes."""
-    question = models.CharField(max_length=255, verbose_name='Pregunta')
-    answer = models.TextField(verbose_name='Respuesta')
-    order = models.PositiveSmallIntegerField(default=0, verbose_name='Orden')
-    
-    class Meta:
-        verbose_name = 'Pregunta Frecuente'
-        verbose_name_plural = 'Preguntas Frecuentes'
-        ordering = ['order']
-    
-    def __str__(self):
-        return self.question

@@ -6,7 +6,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.forms import inlineformset_factory
 from django.contrib import messages
 
-from .models import Course, Question, Answer, FAQ
+from .models import Course, Question, Answer
 from .forms import CourseForm, QuestionForm, AnswerForm
 
 @login_required
@@ -106,9 +106,3 @@ def add_questions(request, course_id):
         'course': course,
         'formset': formset
     })
-
-@login_required
-def faq(request):
-    """Vista para mostrar las preguntas frecuentes."""
-    faqs = FAQ.objects.all()
-    return render(request, 'faq.html', {'faqs': faqs})

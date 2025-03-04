@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Course, Question, Answer, FAQ
+from .models import Course, Question, Answer
 
 class AnswerInline(admin.TabularInline):
     model = Answer
@@ -25,13 +25,7 @@ class CourseAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('title',)}
     inlines = [QuestionInline]
 
-class FAQAdmin(admin.ModelAdmin):
-    list_display = ['question', 'order']
-    list_editable = ['order']
-    search_fields = ['question', 'answer']
-
 # Registrar los modelos
 admin.site.register(Course, CourseAdmin)
 admin.site.register(Question, QuestionAdmin)
 admin.site.register(Answer)
-admin.site.register(FAQ, FAQAdmin)
