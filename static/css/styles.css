@@ -8,6 +8,13 @@
     --whirlpool-light: #f8f9fa;
   }
   
+  /* Personalización general */
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  
   /* Estilos para el logo */
   .logo-container {
     background-color: var(--whirlpool-dark);
@@ -66,15 +73,16 @@
     border-radius: 0.5rem;
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
     transition: all 0.3s ease;
+    border: none;
   }
   
   .card:hover {
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
   }
   
   .card-header {
-    background-color: var(--whirlpool-primary);
-    color: white;
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
   }
   
   /* Footer personalizado */
@@ -82,7 +90,7 @@
     background-color: var(--whirlpool-dark);
     color: white;
     padding: 1.5rem 0;
-    margin-top: 2rem;
+    margin-top: auto;
   }
   
   /* Estilos para secciones */
@@ -91,19 +99,65 @@
   }
   
   /* Ajustes para formularios */
-  .form-control:focus {
+  .form-control:focus, .form-select:focus {
     border-color: var(--whirlpool-secondary);
     box-shadow: 0 0 0 0.25rem rgba(0, 163, 224, 0.25);
   }
   
   /* Estilo para contenido principal */
   .main-content {
-    min-height: calc(100vh - 180px);
+    flex: 1;
+  }
+  
+  /* Personalización de navegación */
+  .navbar-dark.bg-primary {
+    background-color: var(--whirlpool-primary) !important;
+  }
+  
+  /* Personalización de categorías */
+  .category-badge-reparacion {
+    background-color: #dc3545;
+  }
+  
+  .category-badge-instalacion {
+    background-color: #198754;
+  }
+  
+  .category-badge-diagnostico {
+    background-color: #0d6efd;
+  }
+  
+  .category-badge-mantenimiento {
+    background-color: #6c757d;
+  }
+  
+  /* Personalización de formularios */
+  .asteriskField {
+    color: #dc3545;
+    margin-left: 3px;
+  }
+  
+  /* Animaciones */
+  .fade-in {
+    animation: fadeIn 0.5s;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
   
   /* Ajustes para dispositivos móviles */
   @media (max-width: 768px) {
     .logo-img {
       max-height: 40px;
+    }
+    
+    .table-responsive {
+      font-size: 0.875rem;
+    }
+    
+    .btn-group-sm > .btn {
+      padding: 0.25rem 0.4rem;
     }
   }

@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}Cursos - Whirlpool Capacitación{% endblock %}
+
+{% block header_title %}Administración de Cursos{% endblock %}
+{% block header_subtitle %}<p class="lead">Gestiona los cursos de capacitación</p>{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <form method="get" class="d-flex">
+            <div class="input-group">
+                <input type="text" class="form-control" name="search" placeholder="Buscar cursos..." value="{{ request.GET.search|default:'' }}">
+                <button class="btn btn-outline-primary" type="submit">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+    <div class="col-md-6 text-md-end">
+        <a href="{% url 'course-create' %}" class="btn btn-primary">
+            <i class="fas fa-plus-circle me-1"></i> Nuevo Curso
+        </a>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Filtros</h5>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label for="category" class="form-label">Categoría</label>
+                <select name="category" id="category" class="form-select">
+                    <option value="">Todas las categorías</option>
+                    <option value="reparacion" {% if request.GET.category == 'reparacion' %}selected{% endif %}>Reparación</option>
+                    <option value="instalacion" {% if request.GET.category == 'instalacion' %}selected{% endif %}>Instalación</option>
+                    <option value="diagnostico" {% if request.GET.category == 'diagnostico' %}selected{% endif %}>Diagnóstico</option>
+                    <option value="mantenimiento" {% if request.GET.category == 'mantenimiento' %}selected{% endif %}>Mantenimiento</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="instructor" class="form-label">Instructor</label>
+                <select name="instructor" id="instructor" class="form-select">
+                    <option value="">Todos los instructores</option>
+                    {% for instructor in instructors|default:'' %}
+                        <option value="{{ instructor.id }}" {% if request.GET.instructor == instructor.id|stringformat:"i" %}selected{% endif %}>
+                            {{ instructor }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">Aplicar Filtros</button>
+                <a href="{% url 'course-list' %}" class="btn btn-outline-secondary">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de cursos -->
+<div class="card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Cursos de Capacitación</h5>
+        <span class="badge bg-primary">{{ courses.count|default:'0' }} cursos</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Título</th>
+                        <th>Categoría</th>
+                        <th>Instructor</th>
+                        <th>Duración</th>
+                        <th>Preguntas</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for course in courses %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'course-detail' course.slug %}" class="text-decoration-none fw-bold">
+                                {{ course.title }}
+                            </a>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ course.get_category_class }}">
+                                {{ course.get_category_display }}
+                            </span>
+                        </td>
+                        <td>{{ course.instructor|default:"No asignado" }}</td>
+                        <td>{{ course.duration_weeks }} semanas</td>
+                        <td>
+                            <span class="badge bg-secondary">{{ course.questions.count }} preguntas</span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'course-detail' course.slug %}" class="btn btn-outline-primary" title="Ver">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'course-update' course.slug %}" class="btn btn-outline-secondary" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'add-questions' course.id %}" class="btn btn-outline-success" title="Preguntas">
+                                    <i class="fas fa-question-circle"></i>
+                                </a>
+                                <a href="{% url 'course-delete' course.slug %}" class="btn btn-outline-danger" title="Eliminar">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4">
+                            <p class="text-muted mb-0">No hay cursos disponibles.</p>
+                            <a href="{% url 'course-create' %}" class="btn btn-primary mt-3">
+                                <i class="fas fa-plus-circle me-1"></i> Crear Primer Curso
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Paginación -->
+{% if courses.has_other_pages %}
+<nav aria-label="Paginación de cursos" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if courses.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.instructor %}&instructor={{ request.GET.instructor }}{% endif %}" aria-label="Primera">
+                <span aria-hidden="true">&laquo;&laquo;</span>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ courses.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.instructor %}&instructor={{ request.GET.instructor }}{% endif %}" aria-label="Anterior">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <a class="page-link" href="#" aria-label="Primera">
+                <span aria-hidden="true">&laquo;&laquo;</span>
+            </a>
+        </li>
+        <li class="page-item disabled">
+            <a class="page-link" href="#" aria-label="Anterior">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        {% endif %}
+        
+        {% for i in courses.paginator.page_range %}
+            {% if courses.number == i %}
+            <li class="page-item active" aria-current="page">
+                <span class="page-link">{{ i }}</span>
+            </li>
+            {% elif i > courses.number|add:'-3' and i < courses.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ i }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.instructor %}&instructor={{ request.GET.instructor }}{% endif %}">{{ i }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if courses.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ courses.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.instructor %}&instructor={{ request.GET.instructor }}{% endif %}" aria-label="Siguiente">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ courses.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.instructor %}&instructor={{ request.GET.instructor }}{% endif %}" aria-label="Última">
+                <span aria-hidden="true">&raquo;&raquo;</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <a class="page-link" href="#" aria-label="Siguiente">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+        <li class="page-item disabled">
+            <a class="page-link" href="#" aria-label="Última">
+                <span aria-hidden="true">&raquo;&raquo;</span>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}
+
+{% block extrahead %}
+<style>
+    .course-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .course-card {
+        transition: all 0.3s ease;
+    }
+</style>
+{% endblock %}
