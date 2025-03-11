@@ -1,5 +1,14 @@
 import os
 from pathlib import Path
+import MySQLdb as database
+
+# Database connection
+conn = database.connect(
+    host='bx7ok4oweefajlo8iswk-mysql.services.clever-cloud.com',
+    user='uy9qlsaxossvprwa',
+    passwd = 'hbMplA3R9ru3W7HNztbu',
+    db = 'bx7ok4oweefajlo8iswk'
+)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
