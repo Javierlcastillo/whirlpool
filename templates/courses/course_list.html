@@ -71,7 +71,7 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-dark">
                     <tr>
-                        <th>Título</th>
+                        <th>Nombre</th>
                         <th>Categoría</th>
                         <th>Instructor</th>
                         <th>Duración</th>
@@ -84,7 +84,7 @@
                     <tr>
                         <td>
                             <a href="{% url 'course-detail' course.slug %}" class="text-decoration-none fw-bold">
-                                {{ course.title }}
+                                {{ course.name }}
                             </a>
                         </td>
                         <td>
@@ -196,17 +196,4 @@
     </ul>
 </nav>
 {% endif %}
-{% endblock %}
-
-{% block extrahead %}
-<style>
-    .course-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    }
-    
-    .course-card {
-        transition: all 0.3s ease;
-    }
-</style>
 {% endblock %}

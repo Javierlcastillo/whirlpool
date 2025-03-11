@@ -7,7 +7,7 @@
 {% block header_subtitle %}
     <p class="lead">
         {% if object.id %}
-            Actualiza la información del curso "{{ object.title }}"
+            Actualiza la información del curso "{{ object.name }}"
         {% else %}
             Crea un nuevo curso de capacitación para técnicos
         {% endif %}
@@ -30,7 +30,7 @@
                     
                     <div class="row mb-4">
                         <div class="col-md-8">
-                            {{ form.title|as_crispy_field }}
+                            {{ form.name|as_crispy_field }}
                         </div>
                         <div class="col-md-4">
                             {{ form.category|as_crispy_field }}
@@ -77,7 +77,7 @@
                     <div class="list-group-item">
                         <div class="d-flex w-100 justify-content-between">
                             <h5 class="mb-1">{{ question.text }}</h5>
-                            <small>Pregunta {{ question.order }}</small>
+                            <small>Pregunta {{ question.number }}</small>
                         </div>
                         <p class="mb-1">
                             <strong>Respuestas:</strong> {{ question.answers.count }}

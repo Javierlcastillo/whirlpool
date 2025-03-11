@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}Instructores - Whirlpool Capacitación{% endblock %}
+
+{% block header_title %}Administración de Instructores{% endblock %}
+{% block header_subtitle %}<p class="lead">Gestiona los instructores del sistema</p>{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <form method="get" class="d-flex">
+            <div class="input-group">
+                <input type="text" class="form-control" name="search" placeholder="Buscar instructores..." value="{{ request.GET.search|default:'' }}">
+                <button class="btn btn-outline-primary" type="submit">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+    <div class="col-md-6 text-md-end">
+        <a href="{% url 'instructor-create' %}" class="btn btn-primary">
+            <i class="fas fa-plus-circle me-1"></i> Nuevo Instructor
+        </a>
+    </div>
+</div>
+
+<!-- Lista de instructores -->
+<div class="card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Instructores</h5>
+        <span class="badge bg-primary">{{ instructors.count|default:'0' }} instructores</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Región</th>
+                        <th>Cursos Impartidos</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for instructor in instructors %}
+                    <tr>
+                        <td>{{ instructor.id }}</td>
+                        <td>
+                            <a href="{% url 'instructor-detail' instructor.pk %}" class="text-decoration-none fw-bold">
+                                {{ instructor.name }}
+                            </a>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ instructor.region }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ instructor.courses_teaching.count }} cursos</span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'instructor-detail' instructor.pk %}" class="btn btn-outline-primary" title="Ver">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'instructor-update' instructor.pk %}" class="btn btn-outline-secondary" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'instructor-delete' instructor.pk %}" class="btn btn-outline-danger" title="Eliminar">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-4">
+                            <p class="text-muted mb-0">No hay instructores disponibles.</p>
+                            <a href="{% url 'instructor-create' %}" class="btn btn-primary mt-3">
+                                <i class="fas fa-plus-circle me-1"></i> Crear Primer Instructor
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Paginación (similar a la de cursos) -->
+{% endblock %}

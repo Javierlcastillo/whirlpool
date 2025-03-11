@@ -2,14 +2,14 @@ from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, HTML
 
-from .models import Course, Section, Question, Answer
+from .models import Course, Section, Question, Answer, Region, Instructor, CourseApplication, Desempeno
 
 class CourseForm(forms.ModelForm):
     """Formulario para crear/editar cursos."""
     
     class Meta:
         model = Course
-        fields = ['title', 'description', 'instructor', 'duration_weeks', 'category']
+        fields = ['name', 'description', 'instructor', 'duration_weeks', 'category']
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3}),
         }
@@ -23,7 +23,7 @@ class CourseForm(forms.ModelForm):
         self.helper.field_class = 'col-lg-8'
         self.helper.layout = Layout(
             Row(
-                Column('title', css_class='form-group col-md-8 mb-0'),
+                Column('name', css_class='form-group col-md-8 mb-0'),
                 Column('category', css_class='form-group col-md-4 mb-0'),
                 css_class='form-row'
             ),
@@ -55,10 +55,9 @@ class QuestionForm(forms.ModelForm):
     
     class Meta:
         model = Question
-        fields = ['title', 'text', 'image', 'explanation', 'order']
+        fields = ['number', 'text', 'media', 'type']
         widgets = {
             'text': forms.Textarea(attrs={'rows': 3}),
-            'explanation': forms.Textarea(attrs={'rows': 2}),
         }
 
 class AnswerForm(forms.ModelForm):
@@ -66,24 +65,35 @@ class AnswerForm(forms.ModelForm):
     
     class Meta:
         model = Answer
-        fields = ['text', 'image', 'is_correct']
+        fields = ['number', 'answer', 'media', 'is_correct']
         widgets = {
-            'text': forms.Textarea(attrs={'rows': 2}),
+            'answer': forms.Textarea(attrs={'rows': 2}),
         }
 
-class AnswerInlineFormSet(forms.BaseInlineFormSet):
-    """Formset para manejar múltiples respuestas para una pregunta."""
+class RegionForm(forms.ModelForm):
+    """Formulario para crear/editar regiones."""
     
-    def clean(self):
-        """Validar que haya al menos una respuesta correcta por pregunta."""
-        super().clean()
-        has_correct_answer = False
-        
-        for form in self.forms:
-            if not form.cleaned_data.get('DELETE', False):
-                if form.cleaned_data.get('is_correct', False):
-                    has_correct_answer = True
-                    break
-        
-        if not has_correct_answer:
-            raise forms.ValidationError('Debe haber al menos una respuesta correcta.')
+    class Meta:
+        model = Region
+        fields = ['nombre']
+
+class InstructorForm(forms.ModelForm):
+    """Formulario para crear/editar instructores."""
+    
+    class Meta:
+        model = Instructor
+        fields = ['name', 'region']
+
+class CourseApplicationForm(forms.ModelForm):
+    """Formulario para crear/editar aplicaciones de cursos."""
+    
+    class Meta:
+        model = CourseApplication
+        fields = ['course', 'region']
+
+class DesempenoForm(forms.ModelForm):
+    """Formulario para crear/editar desempeños."""
+    
+    class Meta:
+        model = Desempeno
+        fields = ['technician', 'course', 'puntuacion', 'estado']

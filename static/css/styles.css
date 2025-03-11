@@ -161,3 +161,49 @@
       padding: 0.25rem 0.4rem;
     }
   }
+
+  /* Estilos adicionales para regiones e instructores */
+.region-badge {
+  background-color: #fd7e14;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.instructor-badge {
+  background-color: #6f42c1;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+/* Iconos específicos */
+.fa-chalkboard-teacher {
+  color: #6f42c1;
+}
+
+.fa-map-marked-alt {
+  color: #fd7e14;
+}
+
+/* Tarjetas para la nueva estructura */
+.entity-card {
+  transition: all 0.3s ease;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.entity-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.region-header {
+  background-color: #fd7e14;
+  color: white;
+}
+
+.instructor-header {
+  background-color: #6f42c1;
+  color: white;
+}

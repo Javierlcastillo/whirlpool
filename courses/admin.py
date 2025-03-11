@@ -1,56 +1,60 @@
 # admin.py
 from django.contrib import admin
-from .models import Course, Section, Question, Answer, TechnicianProgress, QuestionResponse
+from .models import Course, Section, Question, Answer, Desempeno, CourseApplication, Region, Instructor
 
 class AnswerInline(admin.TabularInline):
     model = Answer
     extra = 3
-    fields = ['text', 'image', 'is_correct']
+    fields = ['number', 'answer', 'media', 'is_correct']
 
 class SectionAdmin(admin.ModelAdmin):
     list_display = ['title', 'course', 'order']
     list_filter = ['course']
-    search_fields = ['title', 'text', 'course__title']
+    search_fields = ['title', 'text', 'course__name']
 
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ['title', 'text', 'course', 'order']
-    list_filter = ['course']
-    search_fields = ['title', 'text', 'course__title']
+    list_display = ['text', 'course', 'number', 'type']
+    list_filter = ['course', 'type']
+    search_fields = ['text', 'course__name']
     inlines = [AnswerInline]
 
-class SectionInline(admin.TabularInline):
-    model = Section
+class CourseApplicationInline(admin.TabularInline):
+    model = CourseApplication
     extra = 1
-    fields = ['title', 'text', 'image', 'video_url', 'order']
-    show_change_link = True
 
 class QuestionInline(admin.TabularInline):
     model = Question
     extra = 1
-    fields = ['title', 'text', 'image', 'order']
+    fields = ['number', 'text', 'media', 'type']
     show_change_link = True
 
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ['title', 'instructor', 'duration_weeks', 'category', 'created_at']
+    list_display = ['name', 'instructor', 'duration_weeks', 'category', 'created_at']
     list_filter = ['category', 'instructor']
-    search_fields = ['title', 'description']
-    prepopulated_fields = {'slug': ('title',)}
-    inlines = [SectionInline, QuestionInline]
+    search_fields = ['name', 'description']
+    prepopulated_fields = {'slug': ('name',)}
+    inlines = [QuestionInline, CourseApplicationInline]
 
-class TechnicianProgressAdmin(admin.ModelAdmin):
-    list_display = ['technician', 'course', 'completed', 'score', 'started_at', 'completed_at']
-    list_filter = ['completed', 'course', 'technician']
-    search_fields = ['technician__user__first_name', 'technician__user__last_name', 'course__title']
+class InstructorAdmin(admin.ModelAdmin):
+    list_display = ['name', 'region']
+    list_filter = ['region']
+    search_fields = ['name']
 
-class QuestionResponseAdmin(admin.ModelAdmin):
-    list_display = ['technician', 'question', 'is_correct', 'response_time']
-    list_filter = ['is_correct', 'question__course', 'technician']
-    search_fields = ['technician__user__first_name', 'technician__user__last_name', 'question__text']
+class RegionAdmin(admin.ModelAdmin):
+    list_display = ['nombre']
+    search_fields = ['nombre']
+
+class DesempenoAdmin(admin.ModelAdmin):
+    list_display = ['technician', 'course', 'puntuacion', 'fecha', 'estado']
+    list_filter = ['estado', 'course', 'technician']
+    search_fields = ['technician__name', 'course__name']
 
 # Registrar los modelos
 admin.site.register(Course, CourseAdmin)
 admin.site.register(Section, SectionAdmin)
 admin.site.register(Question, QuestionAdmin)
 admin.site.register(Answer)
-admin.site.register(TechnicianProgress, TechnicianProgressAdmin)
-admin.site.register(QuestionResponse, QuestionResponseAdmin)
+admin.site.register(Region, RegionAdmin)
+admin.site.register(Instructor, InstructorAdmin)
+admin.site.register(CourseApplication)
+admin.site.register(Desempeno, DesempenoAdmin)
