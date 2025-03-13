@@ -3,12 +3,12 @@ from django.contrib.auth.decorators import login_required
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.forms import inlineformset_factory
+from django.forms import modelformset_factory, inlineformset_factory
 from django.contrib import messages
 
-from .models import Course, Question, Answer, Region, Instructor, CourseApplication, Desempeno
+from .models import Course, Question, Answer, Region, Instructor, CourseApplication, Desempeno, Section
 from users.models import Technician
-from .forms import CourseForm, QuestionForm, AnswerForm, RegionForm, InstructorForm
+from .forms import CourseForm, QuestionForm, AnswerForm, RegionForm, InstructorForm, SectionForm
 
 @login_required
 def dashboard(request):
@@ -48,6 +48,101 @@ def dashboard(request):
     }
     
     return render(request, 'dashboard.html', context)
+
+@login_required
+def manage_course(request, course_id=None):
+    """Vista integral para crear/editar cursos con preguntas y respuestas."""
+    if course_id:
+        course = get_object_or_404(Course, id=course_id)
+        template_title = f"Editar Curso: {course.name}"
+        is_new = False
+    else:
+        course = None
+        template_title = "Nuevo Curso"
+        is_new = True
+    
+    # Formsets para preguntas y secciones
+    QuestionFormSet = inlineformset_factory(
+        Course, Question, 
+        form=QuestionForm,
+        extra=1, can_delete=True,
+        fields=['number', 'text', 'media', 'type']
+    )
+    
+    SectionFormSet = inlineformset_factory(
+        Course, Section,
+        form=SectionForm,
+        extra=1, can_delete=True,
+        fields=['title', 'text', 'image', 'video_url', 'order']
+    )
+    
+    if request.method == 'POST':
+        course_form = CourseForm(request.POST, instance=course)
+        
+        if course_form.is_valid():
+            # Guarda el curso primero
+            created_course = course_form.save()
+            
+            # Si hay un instructor y el curso es nuevo, asocia automáticamente la región
+            if is_new and created_course.instructor and created_course.instructor.region:
+                created_course.region = created_course.instructor.region
+                created_course.save()
+                
+                # También crear la aplicación del curso a esa región
+                CourseApplication.objects.get_or_create(
+                    course=created_course,
+                    region=created_course.instructor.region
+                )
+            
+            # Procesar formsets solo si tenemos un curso
+            if created_course:
+                question_formset = QuestionFormSet(request.POST, request.FILES, instance=created_course)
+                section_formset = SectionFormSet(request.POST, request.FILES, instance=created_course)
+                
+                if question_formset.is_valid() and section_formset.is_valid():
+                    # Guardar preguntas
+                    questions = question_formset.save(commit=False)
+                    for question in questions:
+                        question.course = created_course
+                        question.save()
+                    
+                    # Manejar borrados de preguntas
+                    for obj in question_formset.deleted_objects:
+                        obj.delete()
+                    
+                    # Guardar secciones
+                    sections = section_formset.save(commit=False)
+                    for section in sections:
+                        section.course = created_course
+                        section.save()
+                    
+                    # Manejar borrados de secciones
+                    for obj in section_formset.deleted_objects:
+                        obj.delete()
+                    
+                    messages.success(
+                        request, 
+                        f'Curso {"actualizado" if not is_new else "creado"} exitosamente'
+                    )
+                    return redirect('course-detail', slug=created_course.slug)
+        
+        # Si llega aquí, hay errores en algún formulario
+        messages.error(request, 'Por favor corrija los errores en el formulario')
+            
+    else:
+        # GET request
+        course_form = CourseForm(instance=course)
+        question_formset = QuestionFormSet(instance=course) if course else None
+        section_formset = SectionFormSet(instance=course) if course else None
+    
+    return render(request, 'courses/manage_course.html', {
+        'course_form': course_form,
+        'question_formset': question_formset,
+        'section_formset': section_formset,
+        'course': course,
+        'is_new': is_new,
+        'title': template_title
+    })
 
 class CourseListView(LoginRequiredMixin, ListView):
     """Vista para listar todos los cursos."""

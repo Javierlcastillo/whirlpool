@@ -1,0 +1,255 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }} - Whirlpool Capacitación{% endblock %}
+
+{% block header_title %}{{ title }}{% endblock %}
+{% block header_subtitle %}<p class="lead">Gestione el curso, sus preguntas y secciones en una sola página</p>{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <!-- Información del Curso -->
+            <div class="card mb-4 shadow">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0"><i class="fas fa-book me-2"></i> Información del Curso</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            {{ course_form.name|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ course_form.category|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            {{ course_form.instructor|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ course_form.region|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ course_form.duration_weeks|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            {{ course_form.description|as_crispy_field }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Secciones del Curso -->
+            {% if not is_new %}
+            <div class="card mb-4 shadow">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-file-alt me-2"></i> Secciones del Curso</h4>
+                    <button type="button" class="btn btn-sm btn-outline-success" id="add-section">
+                        <i class="fas fa-plus-circle me-1"></i> Agregar Sección
+                    </button>
+                </div>
+                <div class="card-body">
+                    {{ section_formset.management_form }}
+                    
+                    <div id="sections-container">
+                        {% for form in section_formset %}
+                        <div class="card mb-3 section-form">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Sección {{ forloop.counter }}</h5>
+                                <div class="form-check">
+                                    {{ form.DELETE|as_crispy_field }}
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                {{ form.id }}
+                                
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        {{ form.title|as_crispy_field }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        {{ form.order|as_crispy_field }}
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        {{ form.text|as_crispy_field }}
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        {{ form.image|as_crispy_field }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        {{ form.video_url|as_crispy_field }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Preguntas del Curso -->
+            {% if not is_new %}
+            <div class="card mb-4 shadow">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-question-circle me-2"></i> Preguntas del Curso</h4>
+                    <button type="button" class="btn btn-sm btn-outline-success" id="add-question">
+                        <i class="fas fa-plus-circle me-1"></i> Agregar Pregunta
+                    </button>
+                </div>
+                <div class="card-body">
+                    {{ question_formset.management_form }}
+                    
+                    <div id="questions-container">
+                        {% for form in question_formset %}
+                        <div class="card mb-3 question-form">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Pregunta {{ forloop.counter }}</h5>
+                                <div class="form-check">
+                                    {{ form.DELETE|as_crispy_field }}
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                {{ form.id }}
+                                
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        {{ form.number|as_crispy_field }}
+                                    </div>
+                                    <div class="col-md-10">
+                                        {{ form.text|as_crispy_field }}
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        {{ form.media|as_crispy_field }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        {{ form.type|as_crispy_field }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Botones de acción -->
+            <div class="d-flex justify-content-end mb-4">
+                <a href="{% if course %}{% url 'course-detail' course.slug %}{% else %}{% url 'course-list' %}{% endif %}" class="btn btn-secondary me-2">
+                    <i class="fas fa-times me-1"></i> Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i> Guardar Curso
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Funcionalidad para añadir preguntas
+        const addQuestionBtn = document.getElementById('add-question');
+        if (addQuestionBtn) {
+            const questionsContainer = document.getElementById('questions-container');
+            const questionFormsetTotal = document.querySelector('[name="question_set-TOTAL_FORMS"]');
+            
+            addQuestionBtn.addEventListener('click', function() {
+                // Obtener formulario actual y clonarlo
+                const formCount = parseInt(questionFormsetTotal.value);
+                const formTemplate = document.querySelector('.question-form');
+                const newForm = formTemplate.cloneNode(true);
+                
+                // Actualizar IDs y nombres
+                updateFormFields(newForm, 'question_set', formCount);
+                
+                // Actualizar título
+                const header = newForm.querySelector('.card-header h5');
+                header.textContent = `Pregunta ${formCount + 1}`;
+                
+                // Añadir al contenedor y actualizar contador
+                questionsContainer.appendChild(newForm);
+                questionFormsetTotal.value = formCount + 1;
+            });
+        }
+        
+        // Funcionalidad para añadir secciones
+        const addSectionBtn = document.getElementById('add-section');
+        if (addSectionBtn) {
+            const sectionsContainer = document.getElementById('sections-container');
+            const sectionFormsetTotal = document.querySelector('[name="section_set-TOTAL_FORMS"]');
+            
+            addSectionBtn.addEventListener('click', function() {
+                // Obtener formulario actual y clonarlo
+                const formCount = parseInt(sectionFormsetTotal.value);
+                const formTemplate = document.querySelector('.section-form');
+                const newForm = formTemplate.cloneNode(true);
+                
+                // Actualizar IDs y nombres
+                updateFormFields(newForm, 'section_set', formCount);
+                
+                // Actualizar título
+                const header = newForm.querySelector('.card-header h5');
+                header.textContent = `Sección ${formCount + 1}`;
+                
+                // Añadir al contenedor y actualizar contador
+                sectionsContainer.appendChild(newForm);
+                sectionFormsetTotal.value = formCount + 1;
+            });
+        }
+        
+        // Función auxiliar para actualizar campos de un formulario clonado
+        function updateFormFields(form, prefix, formCount) {
+            const inputs = form.querySelectorAll('input, select, textarea');
+            const labels = form.querySelectorAll('label');
+            
+            inputs.forEach(input => {
+                const name = input.getAttribute('name');
+                if (name) {
+                    input.setAttribute('name', name.replace(`${prefix}-0`, `${prefix}-${formCount}`));
+                }
+                
+                const id = input.getAttribute('id');
+                if (id) {
+                    const newId = id.replace(`${prefix}-0`, `${prefix}-${formCount}`);
+                    input.setAttribute('id', newId);
+                }
+                
+                // Limpiar valores
+                if (input.type !== 'hidden' && input.type !== 'checkbox') {
+                    input.value = '';
+                } else if (input.type === 'checkbox') {
+                    input.checked = false;
+                }
+            });
+            
+            labels.forEach(label => {
+                const forAttr = label.getAttribute('for');
+                if (forAttr) {
+                    label.setAttribute('for', forAttr.replace(`${prefix}-0`, `${prefix}-${formCount}`));
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

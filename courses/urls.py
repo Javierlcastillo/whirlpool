@@ -22,6 +22,9 @@ urlpatterns = [
     # Preguntas y respuestas
     path('<int:course_id>/preguntas/', views.add_questions, name='add-questions'),
     path('preguntas/<int:question_id>/respuestas/', views.add_answers, name='add-answers'),
+
+    path('nuevo-integral/', views.manage_course, name='course-manage-new'),
+    path('<int:course_id>/editar-integral/', views.manage_course, name='course-manage-edit'),
     
     # Course detail URLs - Colocadas al final para evitar capturar otras rutas
     path('<slug:slug>/', views.CourseDetailView.as_view(), name='course-detail'),

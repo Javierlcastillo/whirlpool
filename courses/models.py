@@ -65,7 +65,15 @@ class Course(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Última actualización')
-    
+    region = models.ForeignKey(
+        Region,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='courses',
+        verbose_name='Región Principal'
+    )
+
     class Meta:
         verbose_name = 'Curso'
         verbose_name_plural = 'Cursos'

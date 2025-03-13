@@ -75,6 +75,11 @@ class TechnicianCreateView(SuperuserRequiredMixin, CreateView):
         
         if form.is_valid() and user_form.is_valid():
             user = user_form.save(commit=False)
+            
+            # Asignar el employee_number como nombre de usuario
+            employee_number = form.cleaned_data.get('employee_number')
+            user.username = employee_number  # Esta es la línea clave que falta
+            
             user.set_password(user_form.cleaned_data['password'])
             # Asegúrate de que los nuevos técnicos NO sean superusuarios
             user.is_superuser = False
@@ -114,6 +119,12 @@ class TechnicianUpdateView(SuperuserRequiredMixin, UpdateView):
         
         if form.is_valid() and user_form.is_valid():
             user = user_form.save(commit=False)
+            
+            # Actualizar el nombre de usuario si el número de empleado ha cambiado
+            employee_number = form.cleaned_data.get('employee_number')
+            if employee_number != self.object.employee_number:
+                user.username = employee_number
+            
             # Mantener al técnico sin privilegios de superusuario
             user.is_superuser = False
             user.is_staff = False
