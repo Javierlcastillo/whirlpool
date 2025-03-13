@@ -7,6 +7,7 @@ from django.forms import inlineformset_factory
 from django.contrib import messages
 
 from .models import Course, Question, Answer, Region, Instructor, CourseApplication, Desempeno
+from users.models import Technician
 from .forms import CourseForm, QuestionForm, AnswerForm, RegionForm, InstructorForm
 
 @login_required
@@ -16,16 +17,36 @@ def dashboard(request):
         messages.error(request, "Acceso denegado. Solo administradores tienen permiso para acceder.")
         return redirect('login')
     
+    # Contar elementos principales del sistema
     courses_count = Course.objects.count()
     regions_count = Region.objects.count()
     instructors_count = Instructor.objects.count()
+    technicians_count = Technician.objects.count()
+    
+    # Obtener estadísticas de desempeño
+    total_desempenos = Desempeno.objects.count()
+    completed_desempenos = Desempeno.objects.filter(estado='completed').count()
+    failed_desempenos = Desempeno.objects.filter(estado='failed').count()
+    
+    # Cálculo de tasas de aprobación
+    approval_rate = 0
+    if total_desempenos > 0:
+        approval_rate = (completed_desempenos / total_desempenos) * 100
     
     context = {
         'courses_count': courses_count,
         'regions_count': regions_count,
         'instructors_count': instructors_count,
+        'technicians_count': technicians_count,
         'latest_courses': Course.objects.all().order_by('-created_at')[:5],
+        
+        # Métricas de desempeño
+        'total_desempenos': total_desempenos,
+        'completed_desempenos': completed_desempenos,
+        'failed_desempenos': failed_desempenos,
+        'approval_rate': approval_rate,
     }
+    
     return render(request, 'dashboard.html', context)
 
 class CourseListView(LoginRequiredMixin, ListView):
@@ -48,9 +69,10 @@ class CourseDetailView(LoginRequiredMixin, DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Añadir preguntas y respuestas al contexto
         context['questions'] = self.object.questions.all().prefetch_related('answers')
         context['regions'] = Region.objects.filter(course_applications__course=self.object)
+        # Añadir todas las regiones para el modal de agregar
+        context['all_regions'] = Region.objects.all()
         return context
 
 class CourseCreateView(LoginRequiredMixin, CreateView):
@@ -61,8 +83,18 @@ class CourseCreateView(LoginRequiredMixin, CreateView):
     success_url = reverse_lazy('course-list')
     
     def form_valid(self, form):
-        messages.success(self.request, 'Curso creado exitosamente')
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        course = self.object
+        
+        # Obtener la región del instructor si existe
+        if course.instructor and course.instructor.region:
+            CourseApplication.objects.create(
+                course=course,
+                region=course.instructor.region
+            )
+        
+        messages.success(self.request, f'Curso "{course.name}" creado exitosamente')
+        return response
 
 class CourseUpdateView(LoginRequiredMixin, UpdateView):
     """Vista para actualizar un curso existente."""

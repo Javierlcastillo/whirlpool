@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Gestionar Respuestas - Pregunta {{ question.number }}{% endblock %}
+
+{% block header_title %}Gestionar Respuestas{% endblock %}
+{% block header_subtitle %}<p class="lead">Configura las respuestas para la pregunta "{{ question.text|truncatechars:80 }}"</p>{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Detalles de la Pregunta</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-1">
+                        <span class="badge bg-primary fs-4">{{ question.number }}</span>
+                    </div>
+                    <div class="col-md-11">
+                        <h5>{{ question.text }}</h5>
+                        <p class="text-muted">
+                            <small>
+                                <i class="fas fa-tag me-1"></i> {{ question.get_type_display }}
+                                <span class="mx-2">|</span>
+                                <i class="fas fa-book me-1"></i> {{ course.name }}
+                            </small>
+                        </p>
+                    </div>
+                </div>
+                
+                {% if question.media %}
+                <div class="mt-3">
+                    <img src="{{ question.media.url }}" alt="Material de pregunta" class="img-fluid rounded">
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card shadow">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-list me-2"></i> Listado de Respuestas</h5>
+                <a href="{% url 'course-detail' course.slug %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Volver al Curso
+                </a>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <!-- Si hay formsets existentes, mostrar resumen -->
+                    {% if formset.forms %}
+                    <div class="mb-4">
+                        <h6>Respuestas Existentes: {{ formset.total_form_count }}</h6>
+                    </div>
+                    {% endif %}
+                    
+                    {{ formset.management_form }}
+                    
+                    <div class="answers-container">
+                        {% for form in formset.forms %}
+                        <div class="card mb-3 answer-form">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">Respuesta {{ forloop.counter }}</h6>
+                                {% if formset.can_delete %}
+                                <div class="form-check">
+                                    {{ form.DELETE|as_crispy_field }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="card-body">
+                                {{ form.id }}
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        {{ form.number|as_crispy_field }}
+                                    </div>
+                                    <div class="col-md-8">
+                                        {{ form.answer|as_crispy_field }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        {{ form.is_correct|as_crispy_field }}
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        {{ form.media|as_crispy_field }}
+                                    </div>
+                                </div>
+                                
+                                {% if not forloop.first %}
+                                <hr class="my-3">
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Botones de acción -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <button type="button" id="add-answer" class="btn btn-outline-success">
+                            <i class="fas fa-plus-circle me-1"></i> Agregar Otra Respuesta
+                        </button>
+                        <div>
+                            <a href="{% url 'course-detail' course.slug %}" class="btn btn-secondary me-2">
+                                <i class="fas fa-times me-1"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> Guardar Respuestas
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Obtener el botón de agregar respuesta
+        const addAnswerBtn = document.getElementById('add-answer');
+        
+        // Obtener el contenedor de respuestas
+        const answersContainer = document.querySelector('.answers-container');
+        
+        // Obtener el formulario de gestión
+        const mgmtFormTotal = document.getElementById('id_form-TOTAL_FORMS');
+        
+        // Manejar clic en el botón de agregar respuesta
+        addAnswerBtn.addEventListener('click', function() {
+            // Obtener el número total de formularios
+            const formCount = parseInt(mgmtFormTotal.value);
+            
+            // Obtener el primer formulario como plantilla
+            const firstForm = document.querySelector('.answer-form');
+            
+            // Clonar el formulario
+            const newForm = firstForm.cloneNode(true);
+            
+            // Actualizar los IDs y nombres de los campos
+            const inputs = newForm.querySelectorAll('input, select, textarea');
+            const labels = newForm.querySelectorAll('label');
+            
+            inputs.forEach(input => {
+                const name = input.getAttribute('name');
+                if (name) {
+                    input.setAttribute('name', name.replace('form-0', `form-${formCount}`));
+                }
+                
+                const id = input.getAttribute('id');
+                if (id) {
+                    const newId = id.replace('form-0', `form-${formCount}`);
+                    input.setAttribute('id', newId);
+                }
+                
+                // Limpiar valores
+                if (input.type !== 'hidden' && input.type !== 'checkbox') {
+                    input.value = '';
+                } else if (input.type === 'checkbox') {
+                    input.checked = false;
+                }
+            });
+            
+            labels.forEach(label => {
+                const forAttr = label.getAttribute('for');
+                if (forAttr) {
+                    label.setAttribute('for', forAttr.replace('form-0', `form-${formCount}`));
+                }
+            });
+            
+            // Actualizar título de la respuesta
+            const header = newForm.querySelector('.card-header h6');
+            if (header) {
+                header.textContent = `Respuesta ${formCount + 1}`;
+            }
+            
+            // Agregar el nuevo formulario al contenedor
+            answersContainer.appendChild(newForm);
+            
+            // Actualizar el contador total de formularios
+            mgmtFormTotal.value = formCount + 1;
+        });
+    });
+</script>
+{% endblock %}

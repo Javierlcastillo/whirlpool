@@ -62,3 +62,13 @@ class Technician(models.Model):
         if not self.name and self.user:
             self.name = self.user.get_full_name()
         super().save(*args, **kwargs)
+
+    @property
+    def courses_teaching(self):
+        """
+        Simula la relación de cursos que un técnico imparte.
+        En realidad, esta función debería consultar a la base de datos.
+        """
+        from courses.models import Course
+        # Devuelve un queryset vacío para que funcione .all()
+        return Course.objects.none()

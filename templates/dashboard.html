@@ -128,6 +128,53 @@
     </div>
 </div>
 
+<!-- Métricas de desempeño -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Métricas de Desempeño</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card bg-light mb-3">
+                            <div class="card-body text-center">
+                                <h3 class="display-4">{{ total_desempenos|default:"0" }}</h3>
+                                <p class="text-muted mb-0">Evaluaciones Totales</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white mb-3">
+                            <div class="card-body text-center">
+                                <h3 class="display-4">{{ completed_desempenos|default:"0" }}</h3>
+                                <p class="mb-0">Evaluaciones Aprobadas</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-danger text-white mb-3">
+                            <div class="card-body text-center">
+                                <h3 class="display-4">{{ failed_desempenos|default:"0" }}</h3>
+                                <p class="mb-0">Evaluaciones Reprobadas</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white mb-3">
+                            <div class="card-body text-center">
+                                <h3 class="display-4">{{ approval_rate|floatformat:1 }}%</h3>
+                                <p class="mb-0">Tasa de Aprobación</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Últimos cursos añadidos -->
 <div class="row">
     <div class="col-12">
