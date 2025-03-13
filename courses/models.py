@@ -83,8 +83,23 @@ class Course(models.Model):
         return self.name
     
     def save(self, *args, **kwargs):
+        """Asegurar que cada curso tenga un slug único basado en su nombre."""
         if not self.slug:
-            self.slug = slugify(self.name)
+            # Generar un slug base a partir del nombre
+            base_slug = slugify(self.name)
+            
+            # Verificar si ya existe un curso con ese slug
+            existing_slugs = Course.objects.filter(slug__startswith=base_slug).values_list('slug', flat=True)
+            
+            if base_slug in existing_slugs:
+                # Si ya existe, agregar un sufijo numérico
+                counter = 1
+                while f"{base_slug}-{counter}" in existing_slugs:
+                    counter += 1
+                self.slug = f"{base_slug}-{counter}"
+            else:
+                self.slug = base_slug
+                
         super().save(*args, **kwargs)
     
     def get_absolute_url(self):

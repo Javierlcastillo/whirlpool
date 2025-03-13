@@ -5,6 +5,7 @@ from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.forms import modelformset_factory, inlineformset_factory
 from django.contrib import messages
+from django.http import Http404, HttpResponseRedirect
 
 from .models import Course, Question, Answer, Region, Instructor, CourseApplication, Desempeno, Section
 from users.models import Technician
@@ -104,83 +105,131 @@ def manage_course(request, slug=None):
                     region=created_course.region
                 )
             
-            # Procesar formsets solo si tenemos un curso
+            if is_new:
+                # Si es un curso nuevo, solo guardar el curso básico y redirigir
+                messages.success(request, "Curso creado exitosamente. Ahora puede agregar preguntas y secciones.")
+                return redirect('course-update', slug=created_course.slug)
+            
+            # Procesar formsets solo para cursos existentes
             question_formset = QuestionFormSet(request.POST, request.FILES, instance=created_course)
             section_formset = SectionFormSet(request.POST, request.FILES, instance=created_course)
             
-            if question_formset.is_valid() and section_formset.is_valid():
-                # Guardar preguntas
-                questions = question_formset.save(commit=False)
-                for question in questions:
-                    question.course = created_course
-                    question.save()
-                
-                question_formset.save_m2m()
-                
-                # Manejar borrados de preguntas
-                for obj in question_formset.deleted_objects:
-                    obj.delete()
-                
-                # Guardar secciones
-                sections = section_formset.save(commit=False)
-                for section in sections:
-                    section.course = created_course
-                    section.save()
-                
-                section_formset.save_m2m()
-                
-                # Manejar borrados de secciones
-                for obj in section_formset.deleted_objects:
-                    obj.delete()
-                
-                # Procesar respuestas para cada pregunta
-                # Buscamos en el POST datos con formato 'answer_text_[question_id]_[index]'
-                for key in request.POST:
-                    if key.startswith('answer_text_'):
-                        parts = key.split('_')
-                        if len(parts) >= 4:  # answer_text_[question_id]_[index]
-                            question_id = parts[2]
-                            answer_index = parts[3]
+            formsets_valid = True
+            
+            # Validar y guardar formsets si están presentes
+            if question_formset.is_bound:
+                if question_formset.is_valid():
+                    # Guardar preguntas
+                    questions = question_formset.save(commit=False)
+                    for question in questions:
+                        question.course = created_course
+                        question.save()
+                        
+                        # Procesar respuestas para preguntas recién creadas
+                        question_index = str(question.number - 1)  # El índice en el formset
+                        
+                        # Buscar respuestas para esta pregunta nueva
+                        for key in request.POST:
+                            if key.startswith(f'new_answer_text_{question_index}_'):
+                                parts = key.split('_')
+                                if len(parts) >= 5:  # new_answer_text_[question_index]_[answer_index]
+                                    answer_index = parts[4]
+                                    
+                                    # Obtener datos de la respuesta
+                                    answer_text = request.POST.get(key)
+                                    is_correct = request.POST.get(f'new_answer_correct_{question_index}_{answer_index}') == 'on'
+                                    answer_number = int(request.POST.get(f'new_answer_number_{question_index}_{answer_index}', answer_index)) + 1
+                                    
+                                    # Crear la respuesta
+                                    if answer_text:  # Solo si hay texto
+                                        Answer.objects.create(
+                                            question=question,
+                                            course=created_course,
+                                            number=answer_number,
+                                            answer=answer_text,
+                                            is_correct=is_correct
+                                        )
+                    
+                    question_formset.save_m2m()
+                    
+                    # Manejar borrados de preguntas
+                    for obj in question_formset.deleted_objects:
+                        obj.delete()
+                else:
+                    formsets_valid = False
+            
+            if section_formset.is_bound:
+                if section_formset.is_valid():
+                    # Guardar secciones
+                    sections = section_formset.save(commit=False)
+                    for section in sections:
+                        section.course = created_course
+                        section.save()
+                    
+                    section_formset.save_m2m()
+                    
+                    # Manejar borrados de secciones
+                    for obj in section_formset.deleted_objects:
+                        obj.delete()
+                else:
+                    formsets_valid = False
+            
+            # Procesar respuestas para cada pregunta existente
+            # Buscamos en el POST datos con formato 'answer_text_[question_id]_[index]'
+            for key in request.POST:
+                if key.startswith('answer_text_'):
+                    parts = key.split('_')
+                    if len(parts) >= 4:  # answer_text_[question_id]_[index]
+                        question_id = parts[2]
+                        answer_index = parts[3]
+                        
+                        # Obtener datos de la respuesta
+                        answer_text = request.POST.get(key)
+                        is_correct = request.POST.get(f'answer_correct_{question_id}_{answer_index}') == 'on'
+                        answer_number = int(answer_index) + 1
+                        
+                        # Identificar si es una respuesta nueva o existente
+                        answer_id = request.POST.get(f'answer_id_{question_id}_{answer_index}')
+                        
+                        try:
+                            question = Question.objects.get(id=question_id)
                             
-                            # Obtener datos de la respuesta
-                            answer_text = request.POST.get(key)
-                            is_correct = request.POST.get(f'answer_correct_{question_id}_{answer_index}') == 'on'
-                            answer_number = int(answer_index) + 1
-                            
-                            # Identificar si es una respuesta nueva o existente
-                            answer_id = request.POST.get(f'answer_id_{question_id}_{answer_index}')
-                            
-                            try:
-                                question = Question.objects.get(id=question_id)
-                                
-                                if answer_id and answer_id.isdigit():
-                                    # Actualizar respuesta existente
-                                    try:
-                                        answer = Answer.objects.get(id=answer_id)
-                                        answer.answer = answer_text
-                                        answer.is_correct = is_correct
-                                        answer.save()
-                                    except Answer.DoesNotExist:
-                                        pass
-                                else:
-                                    # Crear nueva respuesta
+                            if answer_id and answer_id.isdigit():
+                                # Actualizar respuesta existente
+                                try:
+                                    answer = Answer.objects.get(id=answer_id)
+                                    answer.answer = answer_text
+                                    answer.is_correct = is_correct
+                                    answer.save()
+                                except Answer.DoesNotExist:
+                                    # Si no existe pero tenemos ID, crear una nueva
                                     Answer.objects.create(
+                                        id=answer_id,
                                         question=question,
                                         course=created_course,
                                         number=answer_number,
                                         answer=answer_text,
                                         is_correct=is_correct
                                     )
-                            except Question.DoesNotExist:
-                                pass
-                
-                messages.success(
-                    request, 
-                    f'Curso {"actualizado" if not is_new else "creado"} exitosamente'
-                )
+                            else:
+                                # Crear nueva respuesta
+                                Answer.objects.create(
+                                    question=question,
+                                    course=created_course,
+                                    number=answer_number,
+                                    answer=answer_text,
+                                    is_correct=is_correct
+                                )
+                        except Question.DoesNotExist:
+                            # Si la pregunta no existe aún, podría ser porque se acaba de crear
+                            pass
+            
+            if formsets_valid:
+                messages.success(request, f'Curso actualizado exitosamente')
                 return redirect('course-detail', slug=created_course.slug)
             else:
-                messages.error(request, 'Por favor corrija los errores en los formularios de preguntas o secciones')
+                messages.warning(request, 'El curso se ha guardado, pero hay errores en algunos campos. Por favor revise el formulario.')
+                
         else:
             messages.error(request, 'Por favor corrija los errores en el formulario del curso')
             
@@ -246,9 +295,31 @@ class CourseDeleteView(LoginRequiredMixin, DeleteView):
     template_name = 'courses/course_confirm_delete.html'
     success_url = reverse_lazy('course-list')
     
-    def delete(self, request, *args, **kwargs):
+    def get_object(self, queryset=None):
+        """Override para manejar mejor los casos donde no se encuentra el objeto."""
+        try:
+            return super().get_object(queryset)
+        except Http404:
+            messages.error(self.request, f"No se encontró el curso con slug: {self.kwargs.get('slug')}")
+            return None
+    
+    def get(self, request, *args, **kwargs):
+        """Verificar que el objeto existe antes de mostrar la página de confirmación."""
+        self.object = self.get_object()
+        if self.object is None:
+            return redirect('course-list')
+        return super().get(request, *args, **kwargs)
+    
+    def post(self, request, *args, **kwargs):
+        """Override para manejar el caso donde el objeto no existe."""
+        self.object = self.get_object()
+        if self.object is None:
+            return redirect('course-list')
+        
+        success_url = self.get_success_url()
+        self.object.delete()
         messages.success(request, 'Curso eliminado exitosamente')
-        return super().delete(request, *args, **kwargs)
+        return HttpResponseRedirect(success_url)
 
 # Views for Region
 class RegionListView(LoginRequiredMixin, ListView):

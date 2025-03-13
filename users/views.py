@@ -74,11 +74,18 @@ class TechnicianCreateView(SuperuserRequiredMixin, CreateView):
         user_form = self.second_form_class(request.POST)
         
         if form.is_valid() and user_form.is_valid():
+            # Verificar que se haya seleccionado una región
+            if not form.cleaned_data.get('region'):
+                form.add_error('region', 'Este campo es obligatorio.')
+                return self.render_to_response(
+                    self.get_context_data(form=form, user_form=user_form)
+                )
+                
             user = user_form.save(commit=False)
             
             # Asignar el employee_number como nombre de usuario
             employee_number = form.cleaned_data.get('employee_number')
-            user.username = employee_number  # Esta es la línea clave que falta
+            user.username = employee_number
             
             user.set_password(user_form.cleaned_data['password'])
             # Asegúrate de que los nuevos técnicos NO sean superusuarios

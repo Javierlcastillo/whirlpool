@@ -69,7 +69,8 @@ class TechnicianForm(forms.ModelForm):
         model = Technician
         fields = ['employee_number', 'region']
         widgets = {
-            'employee_number': forms.TextInput(attrs={'placeholder': 'Número de Empleado'}),
+            'employee_number': forms.TextInput(attrs={'placeholder': 'Número de Empleado', 'class': 'form-control'}),
+            'region': forms.Select(attrs={'class': 'form-select', 'required': 'required'}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -77,6 +78,10 @@ class TechnicianForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         self.helper.form_class = 'form-horizontal'
+        
+        # Hacer que la región sea obligatoria
+        self.fields['region'].required = True
+        
         self.helper.layout = Layout(
             Row(
                 Column('employee_number', css_class='form-group col-md-6 mb-0'),
