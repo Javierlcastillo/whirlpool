@@ -202,7 +202,7 @@
                                 <td>{{ course.name }}</td>
                                 <td>{{ course.instructor|default:'-' }}</td>
                                 <td>
-                                    <span class="badge bg-{{ course.get_category_badge }}">
+                                    <span class="badge bg-{{ course.get_category_class }}">
                                         {{ course.get_category_display }}
                                     </span>
                                 </td>

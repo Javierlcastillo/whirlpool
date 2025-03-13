@@ -50,10 +50,15 @@ def dashboard(request):
     return render(request, 'dashboard.html', context)
 
 @login_required
-def manage_course(request, course_id=None):
-    """Vista integral para crear/editar cursos con preguntas y respuestas."""
-    if course_id:
-        course = get_object_or_404(Course, id=course_id)
+def manage_course(request, slug=None):
+    """Vista unificada para crear/editar cursos con preguntas, respuestas y secciones."""
+    if not request.user.is_superuser:
+        messages.error(request, "Acceso denegado. Solo administradores tienen permiso para acceder.")
+        return redirect('login')
+    
+    # Obtener el curso si existe (edición) o crear uno nuevo
+    if slug:
+        course = get_object_or_404(Course, slug=slug)
         template_title = f"Editar Curso: {course.name}"
         is_new = False
     else:
@@ -65,69 +70,119 @@ def manage_course(request, course_id=None):
     QuestionFormSet = inlineformset_factory(
         Course, Question, 
         form=QuestionForm,
-        extra=1, can_delete=True,
+        extra=1 if not is_new else 0, 
+        can_delete=True,
         fields=['number', 'text', 'media', 'type']
     )
     
     SectionFormSet = inlineformset_factory(
         Course, Section,
         form=SectionForm,
-        extra=1, can_delete=True,
+        extra=1 if not is_new else 0, 
+        can_delete=True,
         fields=['title', 'text', 'image', 'video_url', 'order']
     )
     
+    # Para manejar respuestas, necesitaremos procesar datos adicionales
     if request.method == 'POST':
-        course_form = CourseForm(request.POST, instance=course)
+        course_form = CourseForm(request.POST, request.FILES, instance=course)
         
         if course_form.is_valid():
-            # Guarda el curso primero
-            created_course = course_form.save()
+            # Guardar el curso primero
+            created_course = course_form.save(commit=False)
             
-            # Si hay un instructor y el curso es nuevo, asocia automáticamente la región
-            if is_new and created_course.instructor and created_course.instructor.region:
+            # Asegurar que esté ligado a una región
+            if not created_course.region and created_course.instructor and created_course.instructor.region:
                 created_course.region = created_course.instructor.region
-                created_course.save()
                 
-                # También crear la aplicación del curso a esa región
+            created_course.save()
+            
+            # Si hay región, crear la aplicación del curso a esa región
+            if created_course.region:
                 CourseApplication.objects.get_or_create(
                     course=created_course,
-                    region=created_course.instructor.region
+                    region=created_course.region
                 )
             
             # Procesar formsets solo si tenemos un curso
-            if created_course:
-                question_formset = QuestionFormSet(request.POST, request.FILES, instance=created_course)
-                section_formset = SectionFormSet(request.POST, request.FILES, instance=created_course)
+            question_formset = QuestionFormSet(request.POST, request.FILES, instance=created_course)
+            section_formset = SectionFormSet(request.POST, request.FILES, instance=created_course)
+            
+            if question_formset.is_valid() and section_formset.is_valid():
+                # Guardar preguntas
+                questions = question_formset.save(commit=False)
+                for question in questions:
+                    question.course = created_course
+                    question.save()
                 
-                if question_formset.is_valid() and section_formset.is_valid():
-                    # Guardar preguntas
-                    questions = question_formset.save(commit=False)
-                    for question in questions:
-                        question.course = created_course
-                        question.save()
-                    
-                    # Manejar borrados de preguntas
-                    for obj in question_formset.deleted_objects:
-                        obj.delete()
-                    
-                    # Guardar secciones
-                    sections = section_formset.save(commit=False)
-                    for section in sections:
-                        section.course = created_course
-                        section.save()
-                    
-                    # Manejar borrados de secciones
-                    for obj in section_formset.deleted_objects:
-                        obj.delete()
-                    
-                    messages.success(
-                        request, 
-                        f'Curso {"actualizado" if not is_new else "creado"} exitosamente'
-                    )
-                    return redirect('course-detail', slug=created_course.slug)
-        
-        # Si llega aquí, hay errores en algún formulario
-        messages.error(request, 'Por favor corrija los errores en el formulario')
+                question_formset.save_m2m()
+                
+                # Manejar borrados de preguntas
+                for obj in question_formset.deleted_objects:
+                    obj.delete()
+                
+                # Guardar secciones
+                sections = section_formset.save(commit=False)
+                for section in sections:
+                    section.course = created_course
+                    section.save()
+                
+                section_formset.save_m2m()
+                
+                # Manejar borrados de secciones
+                for obj in section_formset.deleted_objects:
+                    obj.delete()
+                
+                # Procesar respuestas para cada pregunta
+                # Buscamos en el POST datos con formato 'answer_text_[question_id]_[index]'
+                for key in request.POST:
+                    if key.startswith('answer_text_'):
+                        parts = key.split('_')
+                        if len(parts) >= 4:  # answer_text_[question_id]_[index]
+                            question_id = parts[2]
+                            answer_index = parts[3]
+                            
+                            # Obtener datos de la respuesta
+                            answer_text = request.POST.get(key)
+                            is_correct = request.POST.get(f'answer_correct_{question_id}_{answer_index}') == 'on'
+                            answer_number = int(answer_index) + 1
+                            
+                            # Identificar si es una respuesta nueva o existente
+                            answer_id = request.POST.get(f'answer_id_{question_id}_{answer_index}')
+                            
+                            try:
+                                question = Question.objects.get(id=question_id)
+                                
+                                if answer_id and answer_id.isdigit():
+                                    # Actualizar respuesta existente
+                                    try:
+                                        answer = Answer.objects.get(id=answer_id)
+                                        answer.answer = answer_text
+                                        answer.is_correct = is_correct
+                                        answer.save()
+                                    except Answer.DoesNotExist:
+                                        pass
+                                else:
+                                    # Crear nueva respuesta
+                                    Answer.objects.create(
+                                        question=question,
+                                        course=created_course,
+                                        number=answer_number,
+                                        answer=answer_text,
+                                        is_correct=is_correct
+                                    )
+                            except Question.DoesNotExist:
+                                pass
+                
+                messages.success(
+                    request, 
+                    f'Curso {"actualizado" if not is_new else "creado"} exitosamente'
+                )
+                return redirect('course-detail', slug=created_course.slug)
+            else:
+                messages.error(request, 'Por favor corrija los errores en los formularios de preguntas o secciones')
+        else:
+            messages.error(request, 'Por favor corrija los errores en el formulario del curso')
             
     else:
         # GET request
@@ -135,11 +190,26 @@ def manage_course(request, course_id=None):
         question_formset = QuestionFormSet(instance=course) if course else None
         section_formset = SectionFormSet(instance=course) if course else None
     
+    # Obtener preguntas con sus respuestas para la vista
+    questions_with_answers = []
+    if course:
+        questions = Question.objects.filter(course=course).prefetch_related('answers')
+        for question in questions:
+            questions_with_answers.append({
+                'question': question,
+                'answers': question.answers.all()
+            })
+    
+    # Obtener todas las regiones para el selector
+    regions = Region.objects.all()
+    
     return render(request, 'courses/manage_course.html', {
         'course_form': course_form,
         'question_formset': question_formset,
         'section_formset': section_formset,
         'course': course,
+        'questions_with_answers': questions_with_answers,
+        'regions': regions,
         'is_new': is_new,
         'title': template_title
     })
@@ -169,37 +239,6 @@ class CourseDetailView(LoginRequiredMixin, DetailView):
         # Añadir todas las regiones para el modal de agregar
         context['all_regions'] = Region.objects.all()
         return context
-
-class CourseCreateView(LoginRequiredMixin, CreateView):
-    """Vista para crear un nuevo curso."""
-    model = Course
-    form_class = CourseForm
-    template_name = 'courses/course_form.html'
-    success_url = reverse_lazy('course-list')
-    
-    def form_valid(self, form):
-        response = super().form_valid(form)
-        course = self.object
-        
-        # Obtener la región del instructor si existe
-        if course.instructor and course.instructor.region:
-            CourseApplication.objects.create(
-                course=course,
-                region=course.instructor.region
-            )
-        
-        messages.success(self.request, f'Curso "{course.name}" creado exitosamente')
-        return response
-
-class CourseUpdateView(LoginRequiredMixin, UpdateView):
-    """Vista para actualizar un curso existente."""
-    model = Course
-    form_class = CourseForm
-    template_name = 'courses/course_form.html'
-    
-    def form_valid(self, form):
-        messages.success(self.request, 'Curso actualizado exitosamente')
-        return super().form_valid(form)
 
 class CourseDeleteView(LoginRequiredMixin, DeleteView):
     """Vista para eliminar un curso."""
@@ -315,80 +354,3 @@ class InstructorDeleteView(LoginRequiredMixin, DeleteView):
     def delete(self, request, *args, **kwargs):
         messages.success(request, 'Instructor eliminado exitosamente')
         return super().delete(request, *args, **kwargs)
-
-@login_required
-def add_questions(request, course_id):
-    """Vista para añadir preguntas y respuestas a un curso."""
-    course = get_object_or_404(Course, id=course_id)
-    
-    # Formset para preguntas
-    QuestionFormSet = inlineformset_factory(
-        Course, 
-        Question,
-        form=QuestionForm, 
-        extra=1, 
-        can_delete=True
-    )
-    
-    if request.method == 'POST':
-        formset = QuestionFormSet(request.POST, request.FILES, instance=course)
-        if formset.is_valid():
-            questions = formset.save(commit=False)
-            
-            # Procesar cada pregunta
-            for question_form in formset:
-                if question_form.cleaned_data and not question_form.cleaned_data.get('DELETE', False):
-                    question = question_form.save(commit=False)
-                    question.course = course
-                    question.save()
-            
-            formset.save()
-            messages.success(request, 'Preguntas añadidas exitosamente')
-            return redirect('course-detail', slug=course.slug)
-    else:
-        formset = QuestionFormSet(instance=course)
-    
-    return render(request, 'courses/add_questions.html', {
-        'course': course,
-        'formset': formset
-    })
-
-@login_required
-def add_answers(request, question_id):
-    """Vista para añadir respuestas a una pregunta."""
-    question = get_object_or_404(Question, id=question_id)
-    course = question.course
-    
-    # Formset para respuestas
-    AnswerFormSet = inlineformset_factory(
-        Question, 
-        Answer,
-        form=AnswerForm, 
-        extra=1, 
-        can_delete=True
-    )
-    
-    if request.method == 'POST':
-        formset = AnswerFormSet(request.POST, request.FILES, instance=question)
-        if formset.is_valid():
-            answers = formset.save(commit=False)
-            
-            # Procesar cada respuesta
-            for answer_form in formset:
-                if answer_form.cleaned_data and not answer_form.cleaned_data.get('DELETE', False):
-                    answer = answer_form.save(commit=False)
-                    answer.question = question
-                    answer.course = course
-                    answer.save()
-            
-            formset.save()
-            messages.success(request, 'Respuestas añadidas exitosamente')
-            return redirect('course-detail', slug=course.slug)
-    else:
-        formset = AnswerFormSet(instance=question)
-    
-    return render(request, 'courses/add_answers.html', {
-        'question': question,
-        'course': course,
-        'formset': formset
-    })

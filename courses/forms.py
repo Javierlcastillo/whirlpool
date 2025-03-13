@@ -11,34 +11,33 @@ class CourseForm(forms.ModelForm):
         model = Course
         fields = ['name', 'description', 'instructor', 'region', 'duration_weeks', 'category']
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre del curso'}),
+            'description': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Descripción del curso'}),
+            'duration_weeks': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 52}),
+            'instructor': forms.Select(attrs={'class': 'form-select'}),
+            'region': forms.Select(attrs={'class': 'form-select'}),
+            'category': forms.Select(attrs={'class': 'form-select'})
+        }
+        labels = {
+            'name': 'Nombre del Curso',
+            'description': 'Descripción',
+            'instructor': 'Instructor',
+            'region': 'Región',
+            'duration_weeks': 'Duración (semanas)',
+            'category': 'Categoría'
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.form_method = 'post'
-        self.helper.form_class = 'form-horizontal'
-        self.helper.label_class = 'col-lg-2'
-        self.helper.field_class = 'col-lg-8'
-        self.helper.layout = Layout(
-            Row(
-                Column('name', css_class='form-group col-md-8 mb-0'),
-                Column('category', css_class='form-group col-md-4 mb-0'),
-                css_class='form-row'
-            ),
-            Row(
-                Column('instructor', css_class='form-group col-md-6 mb-0'),
-                Column('duration_weeks', css_class='form-group col-md-6 mb-0'),
-                css_class='form-row'
-            ),
-            'description',
-            Div(
-                Submit('submit', 'Guardar', css_class='btn btn-primary'),
-                HTML('<a href="{% url \'course-list\' %}" class="btn btn-secondary">Cancelar</a>'),
-                css_class='text-right'
-            )
-        )
+        # Hacer que todos los campos tengan el estilo adecuado
+        for field_name, field in self.fields.items():
+            if field_name not in self.Meta.widgets:
+                field.widget.attrs['class'] = 'form-control'
+                
+        # Asegurarse de que los campos select tengan la clase correcta
+        for field_name in ['instructor', 'region', 'category']:
+            if field_name in self.fields:
+                self.fields[field_name].widget.attrs['class'] = 'form-select'
 
 class SectionForm(forms.ModelForm):
     """Formulario para crear/editar secciones informativas."""

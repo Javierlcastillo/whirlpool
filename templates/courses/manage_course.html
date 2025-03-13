@@ -4,12 +4,58 @@
 {% block title %}{{ title }} - Whirlpool Capacitación{% endblock %}
 
 {% block header_title %}{{ title }}{% endblock %}
-{% block header_subtitle %}<p class="lead">Gestione el curso, sus preguntas y secciones en una sola página</p>{% endblock %}
+{% block header_subtitle %}<p class="lead">Gestión completa del curso, preguntas, respuestas y secciones</p>{% endblock %}
+
+{% block extrahead %}
+<style>
+    /* Mejorar apariencia de pestañas */
+    .nav-tabs .nav-link {
+        font-weight: 500;
+    }
+    
+    .nav-tabs .nav-link.active {
+        border-bottom: 3px solid #003087;
+    }
+    
+    /* Evitar desbordamiento de campos */
+    .form-control, .form-select {
+        max-width: 100%;
+    }
+    
+    /* Estilo para tarjetas de respuestas */
+    .answer-card {
+        transition: all 0.3s ease;
+    }
+    
+    .answer-card:hover {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.1);
+    }
+    
+    .answer-correct {
+        border-left: 4px solid #198754;
+    }
+    
+    /* Contenedores */
+    .content-container {
+        min-height: 200px;
+    }
+    
+    /* Botones de acción */
+    .action-buttons {
+        position: sticky;
+        bottom: 0;
+        background-color: rgba(255, 255, 255, 0.9);
+        padding: 1rem 0;
+        border-top: 1px solid #e0e0e0;
+        z-index: 100;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-12">
-        <form method="post" enctype="multipart/form-data">
+        <form method="post" enctype="multipart/form-data" id="course-form">
             {% csrf_token %}
             
             <!-- Información del Curso -->
@@ -18,7 +64,7 @@
                     <h4 class="mb-0"><i class="fas fa-book me-2"></i> Información del Curso</h4>
                 </div>
                 <div class="card-body">
-                    <div class="row">
+                    <div class="row g-3">
                         <div class="col-md-8">
                             {{ course_form.name|as_crispy_field }}
                         </div>
@@ -27,7 +73,7 @@
                         </div>
                     </div>
                     
-                    <div class="row">
+                    <div class="row g-3">
                         <div class="col-md-4">
                             {{ course_form.instructor|as_crispy_field }}
                         </div>
@@ -39,7 +85,7 @@
                         </div>
                     </div>
                     
-                    <div class="row">
+                    <div class="row g-3">
                         <div class="col-md-12">
                             {{ course_form.description|as_crispy_field }}
                         </div>
@@ -47,209 +93,495 @@
                 </div>
             </div>
             
-            <!-- Secciones del Curso -->
             {% if not is_new %}
+            <!-- Contenido del Curso (Preguntas y Secciones) -->
             <div class="card mb-4 shadow">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0"><i class="fas fa-file-alt me-2"></i> Secciones del Curso</h4>
-                    <button type="button" class="btn btn-sm btn-outline-success" id="add-section">
-                        <i class="fas fa-plus-circle me-1"></i> Agregar Sección
-                    </button>
+                <div class="card-header bg-white">
+                    <ul class="nav nav-tabs card-header-tabs" id="contentTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="questions-tab" data-bs-toggle="tab" data-bs-target="#questions-content" type="button" role="tab" aria-controls="questions-content" aria-selected="true">
+                                <i class="fas fa-question-circle me-1"></i> Preguntas y Respuestas
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="sections-tab" data-bs-toggle="tab" data-bs-target="#sections-content" type="button" role="tab" aria-controls="sections-content" aria-selected="false">
+                                <i class="fas fa-file-alt me-1"></i> Secciones
+                            </button>
+                        </li>
+                    </ul>
                 </div>
                 <div class="card-body">
-                    {{ section_formset.management_form }}
-                    
-                    <div id="sections-container">
-                        {% for form in section_formset %}
-                        <div class="card mb-3 section-form">
-                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">Sección {{ forloop.counter }}</h5>
-                                <div class="form-check">
-                                    {{ form.DELETE|as_crispy_field }}
-                                </div>
+                    <div class="tab-content" id="contentTabContent">
+                        <!-- Pestaña de Preguntas y Respuestas -->
+                        <div class="tab-pane fade show active content-container" id="questions-content" role="tabpanel" aria-labelledby="questions-tab">
+                            <!-- Gestión de formset de preguntas -->
+                            {{ question_formset.management_form }}
+                            
+                            <div class="d-flex justify-content-end mb-3">
+                                <button type="button" class="btn btn-primary" id="add-question-btn">
+                                    <i class="fas fa-plus-circle me-1"></i> Agregar Pregunta
+                                </button>
                             </div>
-                            <div class="card-body">
-                                {{ form.id }}
-                                
-                                <div class="row">
-                                    <div class="col-md-8">
-                                        {{ form.title|as_crispy_field }}
+                            
+                            <div id="questions-container">
+                                {% for form in question_formset.forms %}
+                                <div class="card mb-4 question-card" id="question-card-{{ forloop.counter0 }}">
+                                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0">
+                                            <span class="question-number">Pregunta {{ form.initial.number|default:forloop.counter }}</span>
+                                        </h5>
+                                        <div class="form-check">
+                                            {{ form.DELETE|as_crispy_field }}
+                                        </div>
                                     </div>
-                                    <div class="col-md-4">
-                                        {{ form.order|as_crispy_field }}
+                                    <div class="card-body">
+                                        {{ form.id }}
+                                        
+                                        <div class="row g-3">
+                                            <div class="col-md-2">
+                                                {{ form.number|as_crispy_field }}
+                                            </div>
+                                            <div class="col-md-10">
+                                                {{ form.text|as_crispy_field }}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                {{ form.media|as_crispy_field }}
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.type|as_crispy_field }}
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Respuestas para esta pregunta -->
+                                        {% if form.instance.id %}
+                                        <div class="mt-4">
+                                            <h6 class="border-bottom pb-2 mb-3">
+                                                Respuestas
+                                                <button type="button" class="btn btn-sm btn-outline-success float-end add-answer-btn" 
+                                                        data-question-id="{{ form.instance.id }}">
+                                                    <i class="fas fa-plus-circle me-1"></i> Agregar Respuesta
+                                                </button>
+                                            </h6>
+                                            
+                                            <div class="answers-container" data-question-id="{{ form.instance.id }}">
+                                                {% for answer in form.instance.answers.all %}
+                                                <div class="card mb-2 answer-card {% if answer.is_correct %}answer-correct{% endif %}">
+                                                    <div class="card-body py-2">
+                                                        <div class="row g-2 align-items-center">
+                                                            <input type="hidden" name="answer_id_{{ form.instance.id }}_{{ forloop.counter0 }}" value="{{ answer.id }}">
+                                                            <div class="col-md-1">
+                                                                <label class="form-label">Núm</label>
+                                                                <input type="text" class="form-control" value="{{ answer.number }}" readonly>
+                                                            </div>
+                                                            <div class="col-md-9">
+                                                                <label class="form-label">Respuesta</label>
+                                                                <input type="text" class="form-control" name="answer_text_{{ form.instance.id }}_{{ forloop.counter0 }}" value="{{ answer.answer }}">
+                                                            </div>
+                                                            <div class="col-md-2">
+                                                                <div class="form-check mt-4">
+                                                                    <input type="checkbox" class="form-check-input" name="answer_correct_{{ form.instance.id }}_{{ forloop.counter0 }}" {% if answer.is_correct %}checked{% endif %}>
+                                                                    <label class="form-check-label">Correcta</label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {% empty %}
+                                                <p class="text-muted mb-3">No hay respuestas para esta pregunta.</p>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <div class="mt-4">
+                                            <div class="alert alert-info">
+                                                <p class="mb-0">Guarde el curso primero para agregar respuestas a esta pregunta.</p>
+                                            </div>
+                                        </div>
+                                        {% endif %}
                                     </div>
                                 </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        {{ form.text|as_crispy_field }}
-                                    </div>
-                                </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        {{ form.image|as_crispy_field }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        {{ form.video_url|as_crispy_field }}
-                                    </div>
-                                </div>
+                                {% endfor %}
                             </div>
+                            
+                            <!-- Mensaje cuando no hay preguntas -->
+                            {% if question_formset.forms|length == 0 %}
+                            <div class="text-center py-5" id="no-questions-message">
+                                <p class="text-muted mb-3">Este curso no tiene preguntas. Haga clic en "Agregar Pregunta" para comenzar.</p>
+                            </div>
+                            {% endif %}
                         </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-            
-            <!-- Preguntas del Curso -->
-            {% if not is_new %}
-            <div class="card mb-4 shadow">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0"><i class="fas fa-question-circle me-2"></i> Preguntas del Curso</h4>
-                    <button type="button" class="btn btn-sm btn-outline-success" id="add-question">
-                        <i class="fas fa-plus-circle me-1"></i> Agregar Pregunta
-                    </button>
-                </div>
-                <div class="card-body">
-                    {{ question_formset.management_form }}
-                    
-                    <div id="questions-container">
-                        {% for form in question_formset %}
-                        <div class="card mb-3 question-form">
-                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">Pregunta {{ forloop.counter }}</h5>
-                                <div class="form-check">
-                                    {{ form.DELETE|as_crispy_field }}
-                                </div>
+                        
+                        <!-- Pestaña de Secciones -->
+                        <div class="tab-pane fade content-container" id="sections-content" role="tabpanel" aria-labelledby="sections-tab">
+                            <!-- Gestión de formset de secciones -->
+                            {{ section_formset.management_form }}
+                            
+                            <div class="d-flex justify-content-end mb-3">
+                                <button type="button" class="btn btn-primary" id="add-section-btn">
+                                    <i class="fas fa-plus-circle me-1"></i> Agregar Sección
+                                </button>
                             </div>
-                            <div class="card-body">
-                                {{ form.id }}
-                                
-                                <div class="row">
-                                    <div class="col-md-2">
-                                        {{ form.number|as_crispy_field }}
+                            
+                            <div id="sections-container">
+                                {% for form in section_formset.forms %}
+                                <div class="card mb-4 section-card" id="section-card-{{ forloop.counter0 }}">
+                                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0">
+                                            <span class="section-title">{{ form.initial.title|default:"Nueva Sección" }}</span>
+                                            <span class="text-muted small">(Orden: {{ form.initial.order|default:forloop.counter }})</span>
+                                        </h5>
+                                        <div class="form-check">
+                                            {{ form.DELETE|as_crispy_field }}
+                                        </div>
                                     </div>
-                                    <div class="col-md-10">
-                                        {{ form.text|as_crispy_field }}
+                                    <div class="card-body">
+                                        {{ form.id }}
+                                        
+                                        <div class="row g-3">
+                                            <div class="col-md-9">
+                                                {{ form.title|as_crispy_field }}
+                                            </div>
+                                            <div class="col-md-3">
+                                                {{ form.order|as_crispy_field }}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row g-3">
+                                            <div class="col-md-12">
+                                                {{ form.text|as_crispy_field }}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                {{ form.image|as_crispy_field }}
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.video_url|as_crispy_field }}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        {{ form.media|as_crispy_field }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        {{ form.type|as_crispy_field }}
-                                    </div>
-                                </div>
+                                {% endfor %}
                             </div>
+                            
+                            <!-- Mensaje cuando no hay secciones -->
+                            {% if section_formset.forms|length == 0 %}
+                            <div class="text-center py-5" id="no-sections-message">
+                                <p class="text-muted mb-3">Este curso no tiene secciones. Haga clic en "Agregar Sección" para comenzar.</p>
+                            </div>
+                            {% endif %}
                         </div>
-                        {% endfor %}
                     </div>
                 </div>
             </div>
             {% endif %}
             
             <!-- Botones de acción -->
-            <div class="d-flex justify-content-end mb-4">
-                <a href="{% if course %}{% url 'course-detail' course.slug %}{% else %}{% url 'course-list' %}{% endif %}" class="btn btn-secondary me-2">
-                    <i class="fas fa-times me-1"></i> Cancelar
-                </a>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save me-1"></i> Guardar Curso
-                </button>
+            <div class="action-buttons">
+                <div class="d-flex justify-content-end">
+                    <a href="{% if course %}{% url 'course-detail' course.slug %}{% else %}{% url 'course-list' %}{% endif %}" class="btn btn-secondary me-2">
+                        <i class="fas fa-times me-1"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Guardar Curso
+                    </button>
+                </div>
             </div>
         </form>
     </div>
 </div>
+
+<!-- Plantillas para JavaScript -->
+<template id="question-template">
+    <div class="card mb-4 question-card" id="question-card-__prefix__">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <span class="question-number">Nueva Pregunta</span>
+            </h5>
+            <div class="form-check">
+                <div class="form-group">
+                    <div class="form-check">
+                        <input type="checkbox" name="question_set-__prefix__-DELETE" id="id_question_set-__prefix__-DELETE" class="form-check-input">
+                        <label for="id_question_set-__prefix__-DELETE" class="form-check-label">Eliminar</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <input type="hidden" name="question_set-__prefix__-id" id="id_question_set-__prefix__-id">
+            
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label for="id_question_set-__prefix__-number" class="form-label">Número</label>
+                        <input type="number" name="question_set-__prefix__-number" id="id_question_set-__prefix__-number" class="form-control" value="__number__">
+                    </div>
+                </div>
+                <div class="col-md-10">
+                    <div class="form-group">
+                        <label for="id_question_set-__prefix__-text" class="form-label">Texto de la pregunta</label>
+                        <textarea name="question_set-__prefix__-text" id="id_question_set-__prefix__-text" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_question_set-__prefix__-media" class="form-label">Medio (imagen, video)</label>
+                        <input type="file" name="question_set-__prefix__-media" id="id_question_set-__prefix__-media" class="form-control">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_question_set-__prefix__-type" class="form-label">Tipo</label>
+                        <select name="question_set-__prefix__-type" id="id_question_set-__prefix__-type" class="form-select">
+                            <option value="multiple">Opción Múltiple</option>
+                            <option value="open">Respuesta Abierta</option>
+                            <option value="true_false">Verdadero/Falso</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <div class="alert alert-info">
+                    <p class="mb-0">Guarde el curso primero para agregar respuestas a esta pregunta.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="section-template">
+    <div class="card mb-4 section-card" id="section-card-__prefix__">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <span class="section-title">Nueva Sección</span>
+            </h5>
+            <div class="form-check">
+                <div class="form-group">
+                    <div class="form-check">
+                        <input type="checkbox" name="section_set-__prefix__-DELETE" id="id_section_set-__prefix__-DELETE" class="form-check-input">
+                        <label for="id_section_set-__prefix__-DELETE" class="form-check-label">Eliminar</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <input type="hidden" name="section_set-__prefix__-id" id="id_section_set-__prefix__-id">
+            
+            <div class="row g-3">
+                <div class="col-md-9">
+                    <div class="form-group">
+                        <label for="id_section_set-__prefix__-title" class="form-label">Título</label>
+                        <input type="text" name="section_set-__prefix__-title" id="id_section_set-__prefix__-title" class="form-control">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="id_section_set-__prefix__-order" class="form-label">Orden</label>
+                        <input type="number" name="section_set-__prefix__-order" id="id_section_set-__prefix__-order" class="form-control" value="__order__">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row g-3">
+                <div class="col-md-12">
+                    <div class="form-group">
+                        <label for="id_section_set-__prefix__-text" class="form-label">Texto</label>
+                        <textarea name="section_set-__prefix__-text" id="id_section_set-__prefix__-text" class="form-control" rows="4"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_section_set-__prefix__-image" class="form-label">Imagen</label>
+                        <input type="file" name="section_set-__prefix__-image" id="id_section_set-__prefix__-image" class="form-control">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_section_set-__prefix__-video_url" class="form-label">URL de video</label>
+                        <input type="url" name="section_set-__prefix__-video_url" id="id_section_set-__prefix__-video_url" class="form-control">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="answer-template">
+    <div class="card mb-2 answer-card">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <input type="hidden" name="answer_id___question_id____index__" value="">
+                <div class="col-md-1">
+                    <label class="form-label">Núm</label>
+                    <input type="text" class="form-control" value="__number__" readonly>
+                </div>
+                <div class="col-md-9">
+                    <label class="form-label">Respuesta</label>
+                    <input type="text" class="form-control" name="answer_text___question_id____index__" value="">
+                </div>
+                <div class="col-md-2">
+                    <div class="form-check mt-4">
+                        <input type="checkbox" class="form-check-input" name="answer_correct___question_id____index__">
+                        <label class="form-check-label">Correcta</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
 {% endblock %}
 
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Funcionalidad para añadir preguntas
-        const addQuestionBtn = document.getElementById('add-question');
+        // Selectores
+        const questionsContainer = document.getElementById('questions-container');
+        const sectionsContainer = document.getElementById('sections-container');
+        const addQuestionBtn = document.getElementById('add-question-btn');
+        const addSectionBtn = document.getElementById('add-section-btn');
+        const noQuestionsMessage = document.getElementById('no-questions-message');
+        const noSectionsMessage = document.getElementById('no-sections-message');
+        
+        // Formset management forms
+        const questionTotalForms = document.querySelector('#id_question_set-TOTAL_FORMS');
+        const sectionTotalForms = document.querySelector('#id_section_set-TOTAL_FORMS');
+        
+        // Templates
+        const questionTemplate = document.getElementById('question-template').innerHTML;
+        const sectionTemplate = document.getElementById('section-template').innerHTML;
+        const answerTemplate = document.getElementById('answer-template').innerHTML;
+        
+        // Variables para tracking
+        let questionCounter = questionTotalForms ? parseInt(questionTotalForms.value) : 0;
+        let sectionCounter = sectionTotalForms ? parseInt(sectionTotalForms.value) : 0;
+        
+        // Función para agregar pregunta
         if (addQuestionBtn) {
-            const questionsContainer = document.getElementById('questions-container');
-            const questionFormsetTotal = document.querySelector('[name="question_set-TOTAL_FORMS"]');
-            
             addQuestionBtn.addEventListener('click', function() {
-                // Obtener formulario actual y clonarlo
-                const formCount = parseInt(questionFormsetTotal.value);
-                const formTemplate = document.querySelector('.question-form');
-                const newForm = formTemplate.cloneNode(true);
+                // Ocultar mensaje de "no hay preguntas"
+                if (noQuestionsMessage) {
+                    noQuestionsMessage.style.display = 'none';
+                }
                 
-                // Actualizar IDs y nombres
-                updateFormFields(newForm, 'question_set', formCount);
+                // Obtener el número de la nueva pregunta
+                const newNumber = questionCounter + 1;
                 
-                // Actualizar título
-                const header = newForm.querySelector('.card-header h5');
-                header.textContent = `Pregunta ${formCount + 1}`;
+                // Preparar template
+                let newQuestionHtml = questionTemplate
+                    .replace(/__prefix__/g, questionCounter)
+                    .replace(/__number__/g, newNumber);
                 
-                // Añadir al contenedor y actualizar contador
-                questionsContainer.appendChild(newForm);
-                questionFormsetTotal.value = formCount + 1;
+                // Crear elemento temporal
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = newQuestionHtml;
+                const newQuestion = tempDiv.firstElementChild;
+                
+                // Agregar al contenedor
+                questionsContainer.appendChild(newQuestion);
+                
+                // Actualizar contador
+                questionCounter++;
+                questionTotalForms.value = questionCounter;
+                
+                // Activar tab de preguntas
+                const questionsTab = document.getElementById('questions-tab');
+                bootstrap.Tab.getOrCreateInstance(questionsTab).show();
             });
         }
         
-        // Funcionalidad para añadir secciones
-        const addSectionBtn = document.getElementById('add-section');
+        // Función para agregar sección
         if (addSectionBtn) {
-            const sectionsContainer = document.getElementById('sections-container');
-            const sectionFormsetTotal = document.querySelector('[name="section_set-TOTAL_FORMS"]');
-            
             addSectionBtn.addEventListener('click', function() {
-                // Obtener formulario actual y clonarlo
-                const formCount = parseInt(sectionFormsetTotal.value);
-                const formTemplate = document.querySelector('.section-form');
-                const newForm = formTemplate.cloneNode(true);
+                // Ocultar mensaje de "no hay secciones"
+                if (noSectionsMessage) {
+                    noSectionsMessage.style.display = 'none';
+                }
                 
-                // Actualizar IDs y nombres
-                updateFormFields(newForm, 'section_set', formCount);
+                // Obtener el número de la nueva sección
+                const newOrder = sectionCounter + 1;
                 
-                // Actualizar título
-                const header = newForm.querySelector('.card-header h5');
-                header.textContent = `Sección ${formCount + 1}`;
+                // Preparar template
+                let newSectionHtml = sectionTemplate
+                    .replace(/__prefix__/g, sectionCounter)
+                    .replace(/__order__/g, newOrder);
                 
-                // Añadir al contenedor y actualizar contador
-                sectionsContainer.appendChild(newForm);
-                sectionFormsetTotal.value = formCount + 1;
+                // Crear elemento temporal
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = newSectionHtml;
+                const newSection = tempDiv.firstElementChild;
+                
+                // Agregar al contenedor
+                sectionsContainer.appendChild(newSection);
+                
+                // Actualizar contador
+                sectionCounter++;
+                sectionTotalForms.value = sectionCounter;
+                
+                // Activar tab de secciones
+                const sectionsTab = document.getElementById('sections-tab');
+                bootstrap.Tab.getOrCreateInstance(sectionsTab).show();
             });
         }
         
-        // Función auxiliar para actualizar campos de un formulario clonado
-        function updateFormFields(form, prefix, formCount) {
-            const inputs = form.querySelectorAll('input, select, textarea');
-            const labels = form.querySelectorAll('label');
-            
-            inputs.forEach(input => {
-                const name = input.getAttribute('name');
-                if (name) {
-                    input.setAttribute('name', name.replace(`${prefix}-0`, `${prefix}-${formCount}`));
-                }
+        // Delegación de eventos para agregar respuestas
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.add-answer-btn')) {
+                const btn = e.target.closest('.add-answer-btn');
+                const questionId = btn.dataset.questionId;
+                const answersContainer = document.querySelector(`.answers-container[data-question-id="${questionId}"]`);
                 
-                const id = input.getAttribute('id');
-                if (id) {
-                    const newId = id.replace(`${prefix}-0`, `${prefix}-${formCount}`);
-                    input.setAttribute('id', newId);
+                if (answersContainer) {
+                    // Contar respuestas existentes
+                    const existingAnswers = answersContainer.querySelectorAll('.answer-card');
+                    const answerIndex = existingAnswers.length;
+                    const newNumber = answerIndex + 1;
+                    
+                    // Preparar template
+                    let newAnswerHtml = answerTemplate
+                        .replace(/__question_id__/g, questionId)
+                        .replace(/__index__/g, answerIndex)
+                        .replace(/__number__/g, newNumber);
+                    
+                    // Crear elemento temporal
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = newAnswerHtml;
+                    const newAnswer = tempDiv.firstElementChild;
+                    
+                    // Eliminar mensaje de "no hay respuestas" si existe
+                    const noAnswersMessage = answersContainer.querySelector('p.text-muted');
+                    if (noAnswersMessage) {
+                        noAnswersMessage.remove();
+                    }
+                    
+                    // Agregar al contenedor (antes del botón)
+                    answersContainer.appendChild(newAnswer);
                 }
-                
-                // Limpiar valores
-                if (input.type !== 'hidden' && input.type !== 'checkbox') {
-                    input.value = '';
-                } else if (input.type === 'checkbox') {
-                    input.checked = false;
+            }
+        });
+        
+        // Actualizar título de sección al cambiar
+        document.addEventListener('input', function(e) {
+            if (e.target.name && e.target.name.includes('section_set') && e.target.name.includes('title')) {
+                const sectionCard = e.target.closest('.section-card');
+                if (sectionCard) {
+                    const titleSpan = sectionCard.querySelector('.section-title');
+                    if (titleSpan) {
+                        titleSpan.textContent = e.target.value || 'Nueva Sección';
+                    }
                 }
-            });
-            
-            labels.forEach(label => {
-                const forAttr = label.getAttribute('for');
-                if (forAttr) {
-                    label.setAttribute('for', forAttr.replace(`${prefix}-0`, `${prefix}-${formCount}`));
-                }
-            });
-        }
+            }
+        });
     });
 </script>
 {% endblock %}

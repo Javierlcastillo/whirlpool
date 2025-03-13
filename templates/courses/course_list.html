@@ -75,7 +75,8 @@
                         <th>Categoría</th>
                         <th>Instructor</th>
                         <th>Duración</th>
-                        <th>Preguntas</th>
+                        <th>Regiones</th>
+                        <th>Contenido</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -95,7 +96,11 @@
                         <td>{{ course.instructor|default:"No asignado" }}</td>
                         <td>{{ course.duration_weeks }} semanas</td>
                         <td>
-                            <span class="badge bg-secondary">{{ course.questions.count }} preguntas</span>
+                            <span class="badge bg-secondary">{{ course.applications.count }} regiones</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info me-1">{{ course.sections.count }} secciones</span>
+                            <span class="badge bg-primary">{{ course.questions.count }} preguntas</span>
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
@@ -105,9 +110,6 @@
                                 <a href="{% url 'course-update' course.slug %}" class="btn btn-outline-secondary" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="{% url 'add-questions' course.id %}" class="btn btn-outline-success" title="Preguntas">
-                                    <i class="fas fa-question-circle"></i>
-                                </a>
                                 <a href="{% url 'course-delete' course.slug %}" class="btn btn-outline-danger" title="Eliminar">
                                     <i class="fas fa-trash"></i>
                                 </a>
@@ -116,7 +118,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center py-4">
+                        <td colspan="7" class="text-center py-4">
                             <p class="text-muted mb-0">No hay cursos disponibles.</p>
                             <a href="{% url 'course-create' %}" class="btn btn-primary mt-3">
                                 <i class="fas fa-plus-circle me-1"></i> Crear Primer Curso
