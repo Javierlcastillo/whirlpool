@@ -82,6 +82,16 @@ class Course(models.Model):
     def get_absolute_url(self):
         return reverse('course-detail', kwargs={'slug': self.slug})
 
+    def get_category_class(self):
+        """Devuelve la clase de color CSS según la categoría."""
+        category_classes = {
+            'reparacion': 'danger',
+            'instalacion': 'success',
+            'diagnostico': 'primary',
+            'mantenimiento': 'secondary',
+        }
+        return category_classes.get(self.category, 'info')
+
 class CourseApplication(models.Model):
     """Modelo para aplicación de cursos a regiones."""
     course = models.ForeignKey(

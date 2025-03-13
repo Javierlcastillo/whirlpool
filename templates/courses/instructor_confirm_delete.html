@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Eliminar Instructor - Whirlpool Capacitación{% endblock %}
+
+{% block header_title %}Eliminar Instructor{% endblock %}
+{% block header_subtitle %}<p class="lead">Estás a punto de eliminar un instructor del sistema</p>{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i> Confirmar Eliminación</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <p class="mb-0">
+                        <strong>Advertencia:</strong> Estás a punto de eliminar al instructor <strong>{{ instructor.name }}</strong> del sistema.
+                    </p>
+                </div>
+                
+                <p>Esta acción eliminará:</p>
+                <ul>
+                    <li>La información personal del instructor</li>
+                    <li>La relación con los cursos que imparte</li>
+                </ul>
+                
+                <div class="alert alert-danger">
+                    <p class="mb-0"><strong>Esta acción no puede deshacerse.</strong> ¿Estás seguro de que deseas continuar?</p>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-center mt-4">
+                        <a href="{% url 'instructor-list' %}" class="btn btn-secondary me-2">
+                            <i class="fas fa-times me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash me-1"></i> Sí, Eliminar Instructor
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
