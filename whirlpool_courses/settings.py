@@ -1,14 +1,5 @@
 import os
 from pathlib import Path
-import MySQLdb as database
-
-# Database connection
-conn = database.connect(
-    host='bx7ok4oweefajlo8iswk-mysql.services.clever-cloud.com',
-    user='uy9qlsaxossvprwa',
-    passwd = 'hbMplA3R9ru3W7HNztbu',
-    db = 'bx7ok4oweefajlo8iswk'
-)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,11 +20,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+
     # Third party apps
     'crispy_forms',
     'crispy_bootstrap5',
-    
+
     # Custom apps
     'courses.apps.CoursesConfig',
     'users.apps.UsersConfig',
@@ -73,8 +64,15 @@ WSGI_APPLICATION = 'whirlpool_courses.wsgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'bx7ok4oweefajlo8iswk',
+        'USER': 'uy9qlsaxossvprwa',
+        'PASSWORD': 'hbMplA3R9ru3W7HNztbu',
+        'HOST': 'bx7ok4oweefajlo8iswk-mysql.services.clever-cloud.com',
+        'PORT': '3306',  # Puerto por defecto de MySQL
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
 
