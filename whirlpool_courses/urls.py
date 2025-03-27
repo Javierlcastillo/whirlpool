@@ -8,7 +8,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', dashboard, name='dashboard'),
     path('cursos/', include('courses.urls')),
-    path('usuarios/', include('users.urls'))
+    path('usuarios/', include('users.urls')),
+    path('api/', include('api.urls')),  # Nueva línea para incluir la API
 ]
 
 if settings.DEBUG:
