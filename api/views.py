@@ -11,10 +11,29 @@ from .serializers import (
     InstructorSerializer,
     DesempenoSerializer
 )
+from .permissions import IsAdminUserOrReadOnly
 
-class CourseViewSet(viewsets.ReadOnlyModelViewSet):
+class CourseViewSet(viewsets.ModelViewSet):
     """
-    API endpoint que permite ver cursos.
+    API endpoint para gestionar cursos.
+    
+    list:
+    Devuelve la lista de todos los cursos disponibles.
+    
+    retrieve:
+    Devuelve los detalles completos de un curso específico.
+    
+    create:
+    Crea un nuevo curso (solo administradores).
+    
+    update:
+    Actualiza un curso existente (solo administradores).
+    
+    partial_update:
+    Actualiza parcialmente un curso existente (solo administradores).
+    
+    destroy:
+    Elimina un curso (solo administradores).
     """
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
@@ -24,19 +43,24 @@ class CourseViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'created_at', 'duration_weeks']
     ordering = ['-created_at']
+    permission_classes = [IsAdminUserOrReadOnly]
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return CourseDetailSerializer
         return CourseSerializer
-    
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        return context
 
-class TechnicianViewSet(viewsets.ReadOnlyModelViewSet):
+class TechnicianViewSet(viewsets.ModelViewSet):
     """
-    API endpoint que permite ver técnicos.
+    API endpoint para gestionar técnicos.
+    
+    list:
+    Devuelve la lista de todos los técnicos.
+    
+    retrieve:
+    Devuelve los detalles de un técnico específico, incluyendo su desempeño.
+    
+    Las operaciones de escritura solo están disponibles para administradores.
     """
     queryset = Technician.objects.all()
     serializer_class = TechnicianSerializer
@@ -45,19 +69,18 @@ class TechnicianViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['name', 'employee_number']
     ordering_fields = ['name', 'employee_number']
     ordering = ['name']
+    permission_classes = [IsAdminUserOrReadOnly]
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return TechnicianDetailSerializer
         return TechnicianSerializer
-    
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        return context
 
-class RegionViewSet(viewsets.ReadOnlyModelViewSet):
+class RegionViewSet(viewsets.ModelViewSet):
     """
-    API endpoint que permite ver regiones.
+    API endpoint para gestionar regiones.
+    
+    Las operaciones de escritura solo están disponibles para administradores.
     """
     queryset = Region.objects.all()
     serializer_class = RegionSerializer
@@ -65,10 +88,13 @@ class RegionViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['nombre']
     ordering_fields = ['nombre']
     ordering = ['nombre']
+    permission_classes = [IsAdminUserOrReadOnly]
 
-class InstructorViewSet(viewsets.ReadOnlyModelViewSet):
+class InstructorViewSet(viewsets.ModelViewSet):
     """
-    API endpoint que permite ver instructores.
+    API endpoint para gestionar instructores.
+    
+    Las operaciones de escritura solo están disponibles para administradores.
     """
     queryset = Instructor.objects.all()
     serializer_class = InstructorSerializer
@@ -77,10 +103,13 @@ class InstructorViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['name']
     ordering_fields = ['name']
     ordering = ['name']
+    permission_classes = [IsAdminUserOrReadOnly]
 
-class DesempenoViewSet(viewsets.ReadOnlyModelViewSet):
+class DesempenoViewSet(viewsets.ModelViewSet):
     """
-    API endpoint que permite ver desempeños.
+    API endpoint para gestionar desempeños.
+    
+    Las operaciones de escritura solo están disponibles para administradores.
     """
     queryset = Desempeno.objects.all()
     serializer_class = DesempenoSerializer
@@ -88,3 +117,4 @@ class DesempenoViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_fields = ['technician__id', 'course__id', 'estado']
     ordering_fields = ['fecha', 'puntuacion']
     ordering = ['-fecha']
+    permission_classes = [IsAdminUserOrReadOnly]

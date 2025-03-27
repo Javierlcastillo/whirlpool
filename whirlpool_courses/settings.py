@@ -10,7 +10,7 @@ SECRET_KEY = 'django-insecure-whirlpool-courses-secretkey-changemeinproduction'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 # Application definition
 INSTALLED_APPS = [
@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'django_filters',
     'corsheaders',
+    'drf_yasg',  # Para documentación de API
 
     # Custom apps
     'courses.apps.CoursesConfig',
@@ -37,7 +38,7 @@ INSTALLED_APPS = [
 
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # CORS debe estar antes de CommonMiddleware
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -128,21 +129,50 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
+# Configuración de Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.IsAuthenticated',  # Requiere autenticación por defecto
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',  # Autenticación por token
+        'rest_framework.authentication.SessionAuthentication',  # Autenticación por sesión
     ],
     'DEFAULT_FILTER_BACKENDS': [
-        'django_filters.rest_framework.DjangoFilterBackend',
-        'rest_framework.filters.SearchFilter',
-        'rest_framework.filters.OrderingFilter',
+        'django_filters.rest_framework.DjangoFilterBackend',  # Filtrado
+        'rest_framework.filters.SearchFilter',  # Búsqueda
+        'rest_framework.filters.OrderingFilter',  # Ordenamiento
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20
+    'PAGE_SIZE': 20,
+    'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.URLPathVersioning',
+    'DEFAULT_VERSION': 'v1',
 }
 
-CORS_ALLOW_ALL_ORIGINS = True  # Solo para desarrollo
+# Configuración CORS (Cross-Origin Resource Sharing)
+# En desarrollo puede ser útil permitir todos los orígenes, pero en producción debe ser más restrictivo
+if DEBUG:
+    # Configuración para desarrollo
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    # Configuración más segura para producción
+    CORS_ALLOWED_ORIGINS = [
+        "https://whirlpool-courses.example.com",
+        "https://app.whirlpool-courses.example.com",
+        # Agregar aquí los dominios de frontend que necesiten acceder a la API
+    ]
+    CORS_ALLOW_CREDENTIALS = True
+    
+# Configuración para Swagger/ReDoc
+SWAGGER_SETTINGS = {
+   'SECURITY_DEFINITIONS': {
+      'Token': {
+         'type': 'apiKey',
+         'name': 'Authorization',
+         'in': 'header'
+      }
+   },
+   'USE_SESSION_AUTH': True,  # Permitir autenticación por sesión en la interfaz de Swagger
+   'LOGIN_URL': 'login',
+   'LOGOUT_URL': 'logout',
+}
