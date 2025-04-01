@@ -72,12 +72,12 @@ WSGI_APPLICATION = 'whirlpool_courses.wsgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'bx7ok4oweefajlo8iswk',
-        'USER': 'uy9qlsaxossvprwa',
-        'PASSWORD': 'hbMplA3R9ru3W7HNztbu',
-        'HOST': 'bx7ok4oweefajlo8iswk-mysql.services.clever-cloud.com',
-        'PORT': '3306',  # Puerto por defecto de MySQL
+        'ENGINE': os.environ.get('DATABASE_ENGINE', 'django.db.backends.mysql'),
+        'NAME': os.environ.get('DATABASE_NAME', 'whirlpool_db'),
+        'USER': os.environ.get('DATABASE_USER', 'whirlpool_user'),
+        'PASSWORD': os.environ.get('DATABASE_PASSWORD', 'whirlpool_password'),
+        'HOST': os.environ.get('DATABASE_HOST', 'db'),  # Usa 'db' como valor por defecto
+        'PORT': os.environ.get('DATABASE_PORT', '3306'),  # El puerto estándar es 3306
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },
