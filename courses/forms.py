@@ -9,21 +9,21 @@ class CourseForm(forms.ModelForm):
     
     class Meta:
         model = Course
-        fields = ['name', 'description', 'instructor', 'region', 'duration_weeks', 'category']
+        fields = ['name', 'description', 'instructor', 'duration_hours', 'category', 'region']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre del curso'}),
-            'description': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Descripción del curso'}),
-            'duration_weeks': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 52}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Descripción del curso', 'rows': 4}),
+            'duration_hours': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 1000}),
             'instructor': forms.Select(attrs={'class': 'form-select'}),
             'region': forms.Select(attrs={'class': 'form-select'}),
-            'category': forms.Select(attrs={'class': 'form-select'})
+            'category': forms.Select(attrs={'class': 'form-select'}),
         }
         labels = {
-            'name': 'Nombre del Curso',
+            'name': 'Nombre',
             'description': 'Descripción',
             'instructor': 'Instructor',
             'region': 'Región',
-            'duration_weeks': 'Duración (semanas)',
+            'duration_hours': 'Duración (horas)',
             'category': 'Categoría'
         }
     

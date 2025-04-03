@@ -76,7 +76,7 @@ DATABASES = {
         'NAME': os.environ.get('DATABASE_NAME', 'whirlpool_db'),
         'USER': os.environ.get('DATABASE_USER', 'whirlpool_user'),
         'PASSWORD': os.environ.get('DATABASE_PASSWORD', 'whirlpool_password'),
-        'HOST': os.environ.get('DATABASE_HOST', 'db'),  # Usa 'db' como valor por defecto
+        'HOST': os.environ.get('DATABASE_HOST', 'db'),
         'PORT': os.environ.get('DATABASE_PORT', '3306'),  # El puerto estándar es 3306
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",

@@ -4,8 +4,35 @@ from .models import Course, Section, Question, Answer, Desempeno, CourseApplicat
 
 class AnswerInline(admin.TabularInline):
     model = Answer
-    extra = 3
-    fields = ['number', 'answer', 'media', 'is_correct']
+    extra = 1
+
+class QuestionInline(admin.StackedInline):
+    model = Question
+    extra = 1
+    inlines = [AnswerInline]
+    show_change_link = True
+
+class CourseApplicationInline(admin.TabularInline):
+    model = CourseApplication
+    extra = 1
+    show_change_link = True
+
+class CourseAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'duration_hours', 'instructor', 'region', 'created_at')
+    list_filter = ('category', 'instructor', 'region')
+    search_fields = ('name', 'description')
+    prepopulated_fields = {'slug': ('name',)}
+    readonly_fields = ('created_at', 'updated_at')
+    inlines = [QuestionInline, CourseApplicationInline]
+
+class RegionAdmin(admin.ModelAdmin):
+    list_display = ('nombre',)
+    search_fields = ('nombre',)
+
+class InstructorAdmin(admin.ModelAdmin):
+    list_display = ('name', 'region')
+    list_filter = ('region',)
+    search_fields = ('name',)
 
 class SectionAdmin(admin.ModelAdmin):
     list_display = ['title', 'course', 'order']
@@ -16,33 +43,6 @@ class QuestionAdmin(admin.ModelAdmin):
     list_display = ['text', 'course', 'number', 'type']
     list_filter = ['course', 'type']
     search_fields = ['text', 'course__name']
-    inlines = [AnswerInline]
-
-class CourseApplicationInline(admin.TabularInline):
-    model = CourseApplication
-    extra = 1
-
-class QuestionInline(admin.TabularInline):
-    model = Question
-    extra = 1
-    fields = ['number', 'text', 'media', 'type']
-    show_change_link = True
-
-class CourseAdmin(admin.ModelAdmin):
-    list_display = ['name', 'instructor', 'duration_weeks', 'category', 'created_at']
-    list_filter = ['category', 'instructor']
-    search_fields = ['name', 'description']
-    prepopulated_fields = {'slug': ('name',)}
-    inlines = [QuestionInline, CourseApplicationInline]
-
-class InstructorAdmin(admin.ModelAdmin):
-    list_display = ['name', 'region']
-    list_filter = ['region']
-    search_fields = ['name']
-
-class RegionAdmin(admin.ModelAdmin):
-    list_display = ['nombre']
-    search_fields = ['nombre']
 
 class DesempenoAdmin(admin.ModelAdmin):
     list_display = ['technician', 'course', 'puntuacion', 'fecha', 'estado']

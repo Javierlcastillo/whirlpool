@@ -66,12 +66,15 @@
             <div class="card-body p-0">
                 {% if regions %}
                 <ul class="list-group list-group-flush">
-                    {% for region in regions %}
+                    {% for application in regions %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>{{ region.nombre }}</span>
-                        <a href="#" class="btn btn-sm btn-outline-danger">
-                            <i class="fas fa-times"></i>
-                        </a>
+                        <span>{{ application.region.nombre }}</span>
+                        <form method="post" action="{% url 'course-remove-region' course.slug application.region.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Está seguro de eliminar esta región del curso?')">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </form>
                     </li>
                     {% endfor %}
                 </ul>
@@ -246,13 +249,13 @@
                 <h5 class="modal-title" id="addRegionModalLabel">Agregar Región al Curso</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post" action="#">
+            <form method="post" action="{% url 'course-add-region' course.slug %}">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="region" class="form-label">Selecciona una Región</label>
+                        <label for="region" class="form-label">Seleccione una región</label>
                         <select class="form-select" id="region" name="region" required>
-                            <option value="" selected disabled>-- Seleccionar Región --</option>
+                            <option value="">Seleccione una región...</option>
                             {% for region in all_regions %}
                             <option value="{{ region.id }}">{{ region.nombre }}</option>
                             {% endfor %}
@@ -261,7 +264,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Agregar</button>
+                    <button type="submit" class="btn btn-primary">Agregar Región</button>
                 </div>
             </form>
         </div>

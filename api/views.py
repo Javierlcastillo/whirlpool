@@ -1,6 +1,9 @@
 from rest_framework import viewsets, filters, permissions
 from django_filters.rest_framework import DjangoFilterBackend
-from courses.models import Course, Desempeno, Region, Instructor
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from courses.models import Course, Desempeno, Region, Instructor, Question, Answer, Section, CourseApplication
 from users.models import Technician
 from .serializers import (
     CourseSerializer, 
@@ -9,7 +12,12 @@ from .serializers import (
     TechnicianDetailSerializer,
     RegionSerializer,
     InstructorSerializer,
-    DesempenoSerializer
+    DesempenoSerializer,
+    QuestionSerializer,
+    AnswerSerializer,
+    SectionSerializer,
+    CourseApplicationSerializer,
+    EnrollmentSerializer
 )
 from .permissions import IsAdminUserOrReadOnly
 
@@ -118,3 +126,42 @@ class DesempenoViewSet(viewsets.ModelViewSet):
     ordering_fields = ['fecha', 'puntuacion']
     ordering = ['-fecha']
     permission_classes = [IsAdminUserOrReadOnly]
+
+class QuestionViewSet(viewsets.ModelViewSet):
+    queryset = Question.objects.all()
+    serializer_class = QuestionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+class AnswerViewSet(viewsets.ModelViewSet):
+    queryset = Answer.objects.all()
+    serializer_class = AnswerSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+class SectionViewSet(viewsets.ModelViewSet):
+    queryset = Section.objects.all()
+    serializer_class = SectionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+class CourseApplicationViewSet(viewsets.ModelViewSet):
+    queryset = CourseApplication.objects.all()
+    serializer_class = CourseApplicationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+class EnrollmentViewSet(viewsets.ModelViewSet):
+    queryset = CourseApplication.objects.all()  # Usamos CourseApplication como Enrollment
+    serializer_class = EnrollmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=True, methods=['post'])
+    def enroll(self, request, pk=None):
+        course = get_object_or_404(Course, pk=pk)
+        technician = get_object_or_404(Technician, user=request.user)
+        
+        enrollment, created = CourseApplication.objects.get_or_create(
+            course=course,
+            region=technician.region
+        )
+        
+        if created:
+            return Response({'status': 'enrolled'})
+        return Response({'status': 'already enrolled'})

@@ -1,54 +1,198 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
-from django.urls import reverse_lazy
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.forms import modelformset_factory, inlineformset_factory
 from django.contrib import messages
-from django.http import Http404, HttpResponseRedirect
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.forms import inlineformset_factory
+from django.db.models import Q
+from django.urls import reverse_lazy
 
-from .models import Course, Question, Answer, Region, Instructor, CourseApplication, Desempeno, Section
+from .models import Course, Question, Answer, Region, Instructor, CourseApplication, Section
+from .forms import CourseForm, QuestionForm, SectionForm, RegionForm, InstructorForm
 from users.models import Technician
-from .forms import CourseForm, QuestionForm, AnswerForm, RegionForm, InstructorForm, SectionForm
+
+# Course Views
+class CourseListView(LoginRequiredMixin, ListView):
+    model = Course
+    template_name = 'courses/course_list.html'
+    context_object_name = 'courses'
+    paginate_by = 10
+
+    def get_queryset(self):
+        queryset = Course.objects.all().select_related('instructor', 'region')
+        
+        # Filtrar por región si se especifica
+        region_slug = self.request.GET.get('region')
+        if region_slug:
+            queryset = queryset.filter(region__slug=region_slug)
+            
+        # Filtrar por búsqueda si se especifica
+        search_query = self.request.GET.get('search')
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) |
+                Q(description__icontains=search_query) |
+                Q(instructor__first_name__icontains=search_query) |
+                Q(instructor__last_name__icontains=search_query)
+            )
+            
+        return queryset.order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Obtener todas las regiones para el filtro
+        context['regions'] = Region.objects.all()
+        
+        # Obtener la región actual si se está filtrando
+        region_slug = self.request.GET.get('region')
+        if region_slug:
+            context['current_region'] = Region.objects.filter(slug=region_slug).first()
+            
+        # Obtener la búsqueda actual
+        context['search_query'] = self.request.GET.get('search', '')
+        
+        # Obtener los cursos en los que el usuario está inscrito
+        if self.request.user.is_authenticated:
+            enrolled_courses = Course.objects.filter(
+                enrollments__user=self.request.user
+            ).values_list('id', flat=True)
+            context['enrolled_courses'] = enrolled_courses
+            
+        return context
+
+class CourseDetailView(LoginRequiredMixin, DetailView):
+    model = Course
+    template_name = 'courses/course_detail.html'
+    context_object_name = 'course'
+    slug_field = 'slug'
+    slug_url_kwarg = 'slug'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        course = self.get_object()
+        
+        # Obtener preguntas y respuestas
+        questions = Question.objects.filter(course=course).prefetch_related('answers')
+        context['questions'] = questions
+        
+        # Obtener secciones
+        sections = Section.objects.filter(course=course).order_by('order')
+        context['sections'] = sections
+        
+        # Verificar si el usuario ya está inscrito
+        context['is_enrolled'] = course.enrollments.filter(user=self.request.user).exists()
+        
+        # Obtener el progreso del usuario si está inscrito
+        if context['is_enrolled']:
+            enrollment = course.enrollments.get(user=self.request.user)
+            context['progress'] = enrollment.progress
+            context['completed_sections'] = enrollment.completed_sections.all()
+            context['completed_questions'] = enrollment.completed_questions.all()
+        
+        return context
+
+class CourseDeleteView(LoginRequiredMixin, DeleteView):
+    model = Course
+    template_name = 'courses/course_confirm_delete.html'
+    success_url = reverse_lazy('course-list')
+    slug_field = 'slug'
+    slug_url_kwarg = 'slug'
 
 @login_required
-def dashboard(request):
-    """Vista para el dashboard principal."""
-    if not request.user.is_superuser:
-        messages.error(request, "Acceso denegado. Solo administradores tienen permiso para acceder.")
-        return redirect('login')
+def enroll_course(request, slug):
+    """Vista para inscribir a un usuario en un curso."""
+    course = get_object_or_404(Course, slug=slug)
+    technician = get_object_or_404(Technician, user=request.user)
     
-    # Contar elementos principales del sistema
-    courses_count = Course.objects.count()
-    regions_count = Region.objects.count()
-    instructors_count = Instructor.objects.count()
-    technicians_count = Technician.objects.count()
+    # Verificar si el usuario ya está inscrito
+    if course.enrollments.filter(user=request.user).exists():
+        messages.warning(request, "Ya estás inscrito en este curso.")
+        return redirect('course-detail', slug=slug)
     
-    # Obtener estadísticas de desempeño
-    total_desempenos = Desempeno.objects.count()
-    completed_desempenos = Desempeno.objects.filter(estado='completed').count()
-    failed_desempenos = Desempeno.objects.filter(estado='failed').count()
+    # Crear la inscripción
+    course.enrollments.create(
+        user=request.user,
+        technician=technician,
+        region=technician.region
+    )
     
-    # Cálculo de tasas de aprobación
-    approval_rate = 0
-    if total_desempenos > 0:
-        approval_rate = (completed_desempenos / total_desempenos) * 100
+    messages.success(request, f"Te has inscrito exitosamente en el curso {course.name}")
+    return redirect('course-detail', slug=slug)
+
+@login_required
+def complete_section(request, slug, section_id):
+    """Vista para marcar una sección como completada."""
+    course = get_object_or_404(Course, slug=slug)
+    section = get_object_or_404(Section, id=section_id, course=course)
+    
+    # Verificar si el usuario está inscrito
+    enrollment = course.enrollments.filter(user=request.user).first()
+    if not enrollment:
+        messages.error(request, "Debes estar inscrito en el curso para completar secciones.")
+        return redirect('course-detail', slug=slug)
+    
+    # Marcar la sección como completada
+    enrollment.completed_sections.add(section)
+    messages.success(request, f"Sección '{section.title}' marcada como completada.")
+    return redirect('course-detail', slug=slug)
+
+@login_required
+def complete_question(request, slug, question_id):
+    """Vista para marcar una pregunta como completada."""
+    course = get_object_or_404(Course, slug=slug)
+    question = get_object_or_404(Question, id=question_id, course=course)
+    
+    # Verificar si el usuario está inscrito
+    enrollment = course.enrollments.filter(user=request.user).first()
+    if not enrollment:
+        messages.error(request, "Debes estar inscrito en el curso para completar preguntas.")
+        return redirect('course-detail', slug=slug)
+    
+    # Marcar la pregunta como completada
+    enrollment.completed_questions.add(question)
+    messages.success(request, f"Pregunta completada correctamente.")
+    return redirect('course-detail', slug=slug)
+
+@login_required
+def course_progress(request, slug):
+    """Vista para mostrar el progreso del curso."""
+    course = get_object_or_404(Course, slug=slug)
+    enrollment = course.enrollments.filter(user=request.user).first()
+    
+    if not enrollment:
+        messages.error(request, "Debes estar inscrito en el curso para ver tu progreso.")
+        return redirect('course-detail', slug=slug)
     
     context = {
-        'courses_count': courses_count,
-        'regions_count': regions_count,
-        'instructors_count': instructors_count,
-        'technicians_count': technicians_count,
-        'latest_courses': Course.objects.all().order_by('-created_at')[:5],
-        
-        # Métricas de desempeño
-        'total_desempenos': total_desempenos,
-        'completed_desempenos': completed_desempenos,
-        'failed_desempenos': failed_desempenos,
-        'approval_rate': approval_rate,
+        'course': course,
+        'enrollment': enrollment,
+        'completed_sections': enrollment.completed_sections.all(),
+        'completed_questions': enrollment.completed_questions.all(),
     }
+    return render(request, 'courses/progress.html', context)
+
+@login_required
+def course_certificate(request, slug):
+    """Vista para generar el certificado del curso."""
+    course = get_object_or_404(Course, slug=slug)
+    enrollment = course.enrollments.filter(user=request.user).first()
     
-    return render(request, 'dashboard.html', context)
+    if not enrollment:
+        messages.error(request, "Debes estar inscrito en el curso para obtener el certificado.")
+        return redirect('course-detail', slug=slug)
+    
+    # Verificar si el curso está completado
+    if not enrollment.is_completed:
+        messages.warning(request, "Debes completar el curso para obtener el certificado.")
+        return redirect('course-detail', slug=slug)
+    
+    context = {
+        'course': course,
+        'enrollment': enrollment,
+        'user': request.user,
+    }
+    return render(request, 'courses/certificate.html', context)
 
 @login_required
 def manage_course(request, slug=None):
@@ -84,7 +228,6 @@ def manage_course(request, slug=None):
         fields=['title', 'text', 'image', 'video_url', 'order']
     )
     
-    # Para manejar respuestas, necesitaremos procesar datos adicionales
     if request.method == 'POST':
         course_form = CourseForm(request.POST, request.FILES, instance=course)
         
@@ -116,113 +259,15 @@ def manage_course(request, slug=None):
             
             formsets_valid = True
             
-            # Validar y guardar formsets si están presentes
-            if question_formset.is_bound:
-                if question_formset.is_valid():
-                    # Guardar preguntas
-                    questions = question_formset.save(commit=False)
-                    for question in questions:
-                        question.course = created_course
-                        question.save()
-                        
-                        # Procesar respuestas para preguntas recién creadas
-                        question_index = str(question.number - 1)  # El índice en el formset
-                        
-                        # Buscar respuestas para esta pregunta nueva
-                        for key in request.POST:
-                            if key.startswith(f'new_answer_text_{question_index}_'):
-                                parts = key.split('_')
-                                if len(parts) >= 5:  # new_answer_text_[question_index]_[answer_index]
-                                    answer_index = parts[4]
-                                    
-                                    # Obtener datos de la respuesta
-                                    answer_text = request.POST.get(key)
-                                    is_correct = request.POST.get(f'new_answer_correct_{question_index}_{answer_index}') == 'on'
-                                    answer_number = int(request.POST.get(f'new_answer_number_{question_index}_{answer_index}', answer_index)) + 1
-                                    
-                                    # Crear la respuesta
-                                    if answer_text:  # Solo si hay texto
-                                        Answer.objects.create(
-                                            question=question,
-                                            course=created_course,
-                                            number=answer_number,
-                                            answer=answer_text,
-                                            is_correct=is_correct
-                                        )
-                    
-                    question_formset.save_m2m()
-                    
-                    # Manejar borrados de preguntas
-                    for obj in question_formset.deleted_objects:
-                        obj.delete()
-                else:
-                    formsets_valid = False
-            
-            if section_formset.is_bound:
-                if section_formset.is_valid():
-                    # Guardar secciones
-                    sections = section_formset.save(commit=False)
-                    for section in sections:
-                        section.course = created_course
-                        section.save()
-                    
-                    section_formset.save_m2m()
-                    
-                    # Manejar borrados de secciones
-                    for obj in section_formset.deleted_objects:
-                        obj.delete()
-                else:
-                    formsets_valid = False
-            
-            # Procesar respuestas para cada pregunta existente
-            # Buscamos en el POST datos con formato 'answer_text_[question_id]_[index]'
-            for key in request.POST:
-                if key.startswith('answer_text_'):
-                    parts = key.split('_')
-                    if len(parts) >= 4:  # answer_text_[question_id]_[index]
-                        question_id = parts[2]
-                        answer_index = parts[3]
-                        
-                        # Obtener datos de la respuesta
-                        answer_text = request.POST.get(key)
-                        is_correct = request.POST.get(f'answer_correct_{question_id}_{answer_index}') == 'on'
-                        answer_number = int(answer_index) + 1
-                        
-                        # Identificar si es una respuesta nueva o existente
-                        answer_id = request.POST.get(f'answer_id_{question_id}_{answer_index}')
-                        
-                        try:
-                            question = Question.objects.get(id=question_id)
-                            
-                            if answer_id and answer_id.isdigit():
-                                # Actualizar respuesta existente
-                                try:
-                                    answer = Answer.objects.get(id=answer_id)
-                                    answer.answer = answer_text
-                                    answer.is_correct = is_correct
-                                    answer.save()
-                                except Answer.DoesNotExist:
-                                    # Si no existe pero tenemos ID, crear una nueva
-                                    Answer.objects.create(
-                                        id=answer_id,
-                                        question=question,
-                                        course=created_course,
-                                        number=answer_number,
-                                        answer=answer_text,
-                                        is_correct=is_correct
-                                    )
-                            else:
-                                # Crear nueva respuesta
-                                Answer.objects.create(
-                                    question=question,
-                                    course=created_course,
-                                    number=answer_number,
-                                    answer=answer_text,
-                                    is_correct=is_correct
-                                )
-                        except Question.DoesNotExist:
-                            # Si la pregunta no existe aún, podría ser porque se acaba de crear
-                            pass
+            if question_formset.is_bound and question_formset.is_valid():
+                question_formset.save()
+            else:
+                formsets_valid = False
+                
+            if section_formset.is_bound and section_formset.is_valid():
+                section_formset.save()
+            else:
+                formsets_valid = False
             
             if formsets_valid:
                 messages.success(request, f'Curso actualizado exitosamente')
@@ -239,189 +284,110 @@ def manage_course(request, slug=None):
         question_formset = QuestionFormSet(instance=course) if course else None
         section_formset = SectionFormSet(instance=course) if course else None
     
-    # Obtener preguntas con sus respuestas para la vista
-    questions_with_answers = []
-    if course:
-        questions = Question.objects.filter(course=course).prefetch_related('answers')
-        for question in questions:
-            questions_with_answers.append({
-                'question': question,
-                'answers': question.answers.all()
-            })
-    
-    # Obtener todas las regiones para el selector
-    regions = Region.objects.all()
-    
-    return render(request, 'courses/manage_course.html', {
+    context = {
+        'title': template_title,
         'course_form': course_form,
         'question_formset': question_formset,
         'section_formset': section_formset,
-        'course': course,
-        'questions_with_answers': questions_with_answers,
-        'regions': regions,
         'is_new': is_new,
-        'title': template_title
-    })
+    }
+    
+    return render(request, 'courses/manage_course.html', context)
 
-class CourseListView(LoginRequiredMixin, ListView):
-    """Vista para listar todos los cursos."""
-    model = Course
-    template_name = 'courses/course_list.html'
-    context_object_name = 'courses'
-    paginate_by = 10
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['instructors'] = Instructor.objects.all()
-        return context
-
-class CourseDetailView(LoginRequiredMixin, DetailView):
-    """Vista para ver detalles de un curso específico."""
-    model = Course
-    template_name = 'courses/course_detail.html'
-    context_object_name = 'course'
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['questions'] = self.object.questions.all().prefetch_related('answers')
-        context['regions'] = Region.objects.filter(course_applications__course=self.object)
-        # Añadir todas las regiones para el modal de agregar
-        context['all_regions'] = Region.objects.all()
-        return context
-
-class CourseDeleteView(LoginRequiredMixin, DeleteView):
-    """Vista para eliminar un curso."""
-    model = Course
-    template_name = 'courses/course_confirm_delete.html'
-    success_url = reverse_lazy('course-list')
-    
-    def get_object(self, queryset=None):
-        """Override para manejar mejor los casos donde no se encuentra el objeto."""
-        try:
-            return super().get_object(queryset)
-        except Http404:
-            messages.error(self.request, f"No se encontró el curso con slug: {self.kwargs.get('slug')}")
-            return None
-    
-    def get(self, request, *args, **kwargs):
-        """Verificar que el objeto existe antes de mostrar la página de confirmación."""
-        self.object = self.get_object()
-        if self.object is None:
-            return redirect('course-list')
-        return super().get(request, *args, **kwargs)
-    
-    def post(self, request, *args, **kwargs):
-        """Override para manejar el caso donde el objeto no existe."""
-        self.object = self.get_object()
-        if self.object is None:
-            return redirect('course-list')
-        
-        success_url = self.get_success_url()
-        self.object.delete()
-        messages.success(request, 'Curso eliminado exitosamente')
-        return HttpResponseRedirect(success_url)
-
-# Views for Region
+# Region Views
 class RegionListView(LoginRequiredMixin, ListView):
-    """Vista para listar todas las regiones."""
     model = Region
     template_name = 'courses/region_list.html'
     context_object_name = 'regions'
     paginate_by = 10
 
 class RegionDetailView(LoginRequiredMixin, DetailView):
-    """Vista para ver detalles de una región específica."""
     model = Region
     template_name = 'courses/region_detail.html'
     context_object_name = 'region'
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        # Añadir cursos aplicados a esta región
-        context['courses'] = Course.objects.filter(applications__region=self.object)
-        context['technicians'] = self.object.technicians.all()
-        return context
 
 class RegionCreateView(LoginRequiredMixin, CreateView):
-    """Vista para crear una nueva región."""
     model = Region
     form_class = RegionForm
     template_name = 'courses/region_form.html'
     success_url = reverse_lazy('region-list')
-    
-    def form_valid(self, form):
-        messages.success(self.request, 'Región creada exitosamente')
-        return super().form_valid(form)
 
 class RegionUpdateView(LoginRequiredMixin, UpdateView):
-    """Vista para actualizar una región existente."""
     model = Region
     form_class = RegionForm
     template_name = 'courses/region_form.html'
     success_url = reverse_lazy('region-list')
-    
-    def form_valid(self, form):
-        messages.success(self.request, 'Región actualizada exitosamente')
-        return super().form_valid(form)
 
 class RegionDeleteView(LoginRequiredMixin, DeleteView):
-    """Vista para eliminar una región."""
     model = Region
     template_name = 'courses/region_confirm_delete.html'
     success_url = reverse_lazy('region-list')
-    
-    def delete(self, request, *args, **kwargs):
-        messages.success(request, 'Región eliminada exitosamente')
-        return super().delete(request, *args, **kwargs)
 
-# Views for Instructor
+# Instructor Views
 class InstructorListView(LoginRequiredMixin, ListView):
-    """Vista para listar todos los instructores."""
     model = Instructor
     template_name = 'courses/instructor_list.html'
     context_object_name = 'instructors'
     paginate_by = 10
 
 class InstructorDetailView(LoginRequiredMixin, DetailView):
-    """Vista para ver detalles de un instructor específico."""
     model = Instructor
     template_name = 'courses/instructor_detail.html'
     context_object_name = 'instructor'
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        # Añadir cursos que imparte este instructor
-        context['courses'] = self.object.courses_teaching.all()
-        return context
 
 class InstructorCreateView(LoginRequiredMixin, CreateView):
-    """Vista para crear un nuevo instructor."""
     model = Instructor
     form_class = InstructorForm
     template_name = 'courses/instructor_form.html'
     success_url = reverse_lazy('instructor-list')
-    
-    def form_valid(self, form):
-        messages.success(self.request, 'Instructor creado exitosamente')
-        return super().form_valid(form)
 
 class InstructorUpdateView(LoginRequiredMixin, UpdateView):
-    """Vista para actualizar un instructor existente."""
     model = Instructor
     form_class = InstructorForm
     template_name = 'courses/instructor_form.html'
     success_url = reverse_lazy('instructor-list')
-    
-    def form_valid(self, form):
-        messages.success(self.request, 'Instructor actualizado exitosamente')
-        return super().form_valid(form)
 
 class InstructorDeleteView(LoginRequiredMixin, DeleteView):
-    """Vista para eliminar un instructor."""
     model = Instructor
     template_name = 'courses/instructor_confirm_delete.html'
     success_url = reverse_lazy('instructor-list')
+
+# Course Region Management
+@login_required
+def add_region_to_course(request, slug):
+    """Agrega una región a un curso."""
+    if not request.user.is_superuser:
+        messages.error(request, "Acceso denegado. Solo administradores tienen permiso para acceder.")
+        return redirect('login')
     
-    def delete(self, request, *args, **kwargs):
-        messages.success(request, 'Instructor eliminado exitosamente')
-        return super().delete(request, *args, **kwargs)
+    course = get_object_or_404(Course, slug=slug)
+    
+    if request.method == 'POST':
+        region_id = request.POST.get('region')
+        if region_id:
+            region = get_object_or_404(Region, id=region_id)
+            CourseApplication.objects.get_or_create(course=course, region=region)
+            messages.success(request, f'Región {region.name} agregada al curso exitosamente.')
+        else:
+            messages.error(request, 'Debe seleccionar una región válida.')
+    
+    return redirect('course-detail', slug=slug)
+
+@login_required
+def remove_region_from_course(request, slug, region_id):
+    """Elimina una región de un curso."""
+    if not request.user.is_superuser:
+        messages.error(request, "Acceso denegado. Solo administradores tienen permiso para acceder.")
+        return redirect('login')
+    
+    course = get_object_or_404(Course, slug=slug)
+    region = get_object_or_404(Region, id=region_id)
+    
+    try:
+        application = CourseApplication.objects.get(course=course, region=region)
+        application.delete()
+        messages.success(request, f'Región {region.name} eliminada del curso exitosamente.')
+    except CourseApplication.DoesNotExist:
+        messages.error(request, 'La región no está asociada a este curso.')
+    
+    return redirect('course-detail', slug=slug)

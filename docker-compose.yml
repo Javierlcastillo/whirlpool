@@ -1,45 +1,39 @@
+version: '3.8'
+
 services:
   web:
     build: .
-    restart: always
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
     ports:
       - "8000:8000"
+    environment:
+      - DEBUG=1
+      - SECRET_KEY=your-secret-key
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/whirlpool
+      - DJANGO_SETTINGS_MODULE=whirlpool.settings
     depends_on:
       - db
-    environment:
-      - DEBUG=True
-      - SECRET_KEY=django-insecure-whirlpool-courses-secretkey-changemeinproduction
-      - DATABASE_ENGINE=django.db.backends.mysql
-      - DATABASE_NAME=whirlpool_db
-      - DATABASE_USER=whirlpool_user
-      - DATABASE_PASSWORD=whirlpool_password
-      - DATABASE_HOST=db
-      - DATABASE_PORT=3306
-      - ALLOWED_HOSTS=localhost,127.0.0.1
-    volumes:
-      - ./:/app
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
-    command: >
-      bash -c "sleep 10 &&
-               python manage.py migrate &&
-               python manage.py collectstatic --noinput &&
-               python manage.py runserver 0.0.0.0:8000"
+    networks:
+      - app-network
 
   db:
-    image: mariadb:10.6
-    restart: always
-    environment:
-      - MYSQL_DATABASE=whirlpool_db
-      - MYSQL_USER=whirlpool_user
-      - MYSQL_PASSWORD=whirlpool_password
-      - MYSQL_ROOT_PASSWORD=root_password
+    image: postgres:13
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=whirlpool
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
     ports:
-      - "3307:3306"  # Cambiado a 3307 en el host, manteniendo 3306 en el contenedor
+      - "5432:5432"
+    networks:
+      - app-network
 
 volumes:
-  static_volume:
-  media_volume:
-  mysql_data:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge

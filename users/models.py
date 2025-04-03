@@ -35,19 +35,22 @@ class Technician(models.Model):
         'courses.Region',  # Referencia por string para evitar importación circular
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
         related_name='technicians',
         verbose_name='Región'
     )
     password = models.CharField(max_length=128, verbose_name='Contraseña', blank=True)
     is_active = models.BooleanField(default=True, verbose_name='Activo')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Fecha de actualización')
     
     class Meta:
+        app_label = 'users'
         verbose_name = 'Técnico'
         verbose_name_plural = 'Técnicos'
     
     def __str__(self):
-        return f"{self.name} ({self.employee_number})"
+        return f"{self.name} ({self.employee_number}) - {self.region.name if self.region else 'No Region'}"
     
     def get_absolute_url(self):
         return reverse('technician-detail', kwargs={'pk': self.pk})

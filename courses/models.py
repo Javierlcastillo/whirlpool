@@ -56,7 +56,7 @@ class Course(models.Model):
         related_name='courses_teaching',
         verbose_name='Instructor'
     )
-    duration_weeks = models.PositiveSmallIntegerField(verbose_name='Duración (semanas)')
+    duration_hours = models.PositiveSmallIntegerField(verbose_name='Duración (horas)', default=8)
     category = models.CharField(
         max_length=20, 
         choices=CATEGORY_CHOICES, 
