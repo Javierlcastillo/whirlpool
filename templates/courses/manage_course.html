@@ -106,7 +106,7 @@
 
 <div class="row">
     <div class="col-12">
-        <form method="post" enctype="multipart/form-data" id="course-form" onsubmit="return false;" 
+        <form method="post" enctype="multipart/form-data" id="course-form" 
               action="{% if course %}{% url 'courses:course-update' course.slug %}{% else %}{% url 'courses:course-create' %}{% endif %}">
             {% csrf_token %}
             
@@ -241,7 +241,7 @@
             
             <!-- Botones de Acción -->
             <div class="action-buttons text-center">
-                <button type="button" class="btn btn-primary btn-lg" id="save-course-btn">
+                <button type="submit" class="btn btn-primary btn-lg" id="save-course-btn">
                     <i class="fas fa-save me-2"></i> Guardar Cambios
                 </button>
                 <a href="{% url 'courses:course-list' %}" class="btn btn-outline-light btn-lg ms-2">
@@ -471,120 +471,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Manejar el envío del formulario
     saveButton.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('Iniciando envío del formulario...');
+        // Actualizar los órdenes antes de enviar
+        updateOrders();
         
-        // Preparar los datos del formulario
-        const formData = new FormData(courseForm);
-        
-        // Agregar datos de administración para el formset de preguntas
-        const questionCards = document.querySelectorAll('.question-card');
-        const totalQuestions = questionCards.length;
-        formData.set('questions-TOTAL_FORMS', totalQuestions.toString());
-        formData.set('questions-INITIAL_FORMS', document.querySelectorAll('.question-card[data-id]').length.toString() || '0');
-        formData.set('questions-MIN_NUM_FORMS', '0');
-        formData.set('questions-MAX_NUM_FORMS', '1000');
-        
-        // Agregar datos de administración para el formset de secciones
-        const sectionCards = document.querySelectorAll('.section-card');
-        const totalSections = sectionCards.length;
-        formData.set('sections-TOTAL_FORMS', totalSections.toString());
-        formData.set('sections-INITIAL_FORMS', document.querySelectorAll('.section-card[data-id]').length.toString() || '0');
-        formData.set('sections-MIN_NUM_FORMS', '0');
-        formData.set('sections-MAX_NUM_FORMS', '1000');
-        
-        // Agregar los campos de orden y respuestas para cada pregunta
-        questionCards.forEach((question, index) => {
-            // Añadir el ID si existe
-            const questionId = question.dataset.id;
-            if (questionId) {
-                formData.append(`questions-${index}-id`, questionId);
-            }
-            
-            // Añadir el texto de la pregunta
-            const textElement = question.querySelector('[name^="questions-"][name$="-text"]');
-            if (textElement) {
-                formData.append(`questions-${index}-text`, textElement.value);
-            }
-            
-            // Añadir el tipo de pregunta
-            const typeElement = question.querySelector('[name^="questions-"][name$="-type"]');
-            if (typeElement) {
-                formData.append(`questions-${index}-type`, typeElement.value);
-            }
-            
-            // Añadir el orden
-            formData.append(`questions-${index}-order`, question.dataset.order);
-            
-            // Agregar respuestas para la pregunta
-            const answersContainer = question.querySelector('.answers-container');
-            if (answersContainer) {
-                const answers = answersContainer.querySelectorAll('.answer-item');
-                answers.forEach((answer, answerIndex) => {
-                    const answerText = answer.querySelector('input[type="text"]').value;
-                    const isCorrect = answer.querySelector('input[type="checkbox"]').checked;
-                    formData.append(`questions-${index}-answers`, answerText);
-                    formData.append(`questions-${index}-is_correct`, isCorrect ? 'on' : '');
-                });
-            }
-        });
-        
-        // Agregar los campos de orden para las secciones
-        sectionCards.forEach((section, index) => {
-            formData.append(`sections-${index}-order`, section.dataset.order);
-        });
-        
-        // Log de los datos que se enviarán
-        console.log('Datos del formulario:');
-        for (let pair of formData.entries()) {
-            console.log(pair[0] + ': ' + pair[1]);
-        }
-        
-        // Obtener la URL y el método del formulario
-        const url = courseForm.action;
-        console.log('URL de envío:', url);
-        
-        // Enviar el formulario
-        fetch(url, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => {
-            console.log('Respuesta recibida:', response);
-            const contentType = response.headers.get('content-type');
-            console.log('Tipo de contenido:', contentType);
-            
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            } else {
-                console.log('Redirigiendo a:', response.url);
-                window.location.href = response.url;
-                return Promise.reject('HTML response received');
-            }
-        })
-        .then(data => {
-            console.log('Datos recibidos:', data);
-            if (data.success) {
-                console.log('Redirigiendo a la lista de cursos...');
-                window.location.href = "{% url 'courses:course-list' %}";
-            } else {
-                console.error('Error del servidor:', data.message);
-                alert('Error al guardar los cambios: ' + data.message);
-            }
-        })
-        .catch(error => {
-            if (error !== 'HTML response received') {
-                console.error('Error en la petición:', error);
-                alert('Error al guardar los cambios. Por favor, intente nuevamente.');
-            }
-        });
-        
-        return false;
+        // Enviar el formulario normalmente
+        courseForm.submit();
     });
 });
 </script>

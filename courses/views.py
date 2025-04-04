@@ -277,15 +277,16 @@ def manage_course(request, slug=None):
                 question.course = course
                 if f'questions-{i}-order' in request.POST:
                     question.order = request.POST[f'questions-{i}-order']
-                question.save()
+                question.save()  # Guardamos primero la pregunta para que tenga un ID
                 
                 # Procesar las respuestas
                 answers_data = request.POST.getlist(f'questions-{i}-answers')
                 is_correct_data = request.POST.getlist(f'questions-{i}-is_correct')
                 
-                # Eliminar respuestas existentes
-                if question.pk:
-                    question.answers.all().delete()
+                # Eliminar respuestas existentes solo si la pregunta ya existía
+                # Esta es la línea que causa problemas - solo debemos eliminar
+                # answers si ya existen para esta pregunta
+                Answer.objects.filter(question=question).delete()
                 
                 # Crear nuevas respuestas
                 for j, (answer_text, is_correct) in enumerate(zip(answers_data, is_correct_data)):
