@@ -34,16 +34,12 @@ RUN python manage.py collectstatic --noinput
 # Puerto donde se expone la aplicación
 EXPOSE 8000
 
-# Crear un script de inicio
-RUN echo '#!/bin/bash\n\
-echo "Waiting for postgres..."\n\
-while ! nc -z db 5432; do\n\
-  sleep 0.1\n\
-done\n\
-echo "PostgreSQL started"\n\
-python manage.py migrate --noinput\n\
-python manage.py runserver 0.0.0.0:8000' > /app/start.sh && \
-chmod +x /app/start.sh
-
-# Usar el script como punto de entrada
-ENTRYPOINT ["/bin/bash", "/app/start.sh"]
+# Comando para ejecutar la aplicación
+CMD bash -c "echo 'Waiting for postgres...' && \
+             while ! nc -z db 5432; do sleep 1; done && \
+             echo 'PostgreSQL started' && \
+             sleep 5 && \
+             echo 'Applying migrations...' && \
+             python manage.py migrate --noinput && \
+             echo 'Starting server...' && \
+             python manage.py runserver 0.0.0.0:8000"
