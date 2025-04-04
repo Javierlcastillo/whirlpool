@@ -106,8 +106,7 @@
 
 <div class="row">
     <div class="col-12">
-        <form method="post" enctype="multipart/form-data" id="course-form" 
-              action="{% if course %}{% url 'courses:course-update' course.slug %}{% else %}{% url 'courses:course-create' %}{% endif %}">
+        <form method="post" enctype="multipart/form-data" id="course-form">
             {% csrf_token %}
             
             <!-- Campos de administración del formset de preguntas -->
@@ -286,6 +285,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // Funciones para actualizar los campos TOTAL_FORMS cuando se agrega una nueva pregunta o sección
+    function updateFormsetManagementData(prefix, count) {
+        const totalFormsInput = document.querySelector(`#id_${prefix}-TOTAL_FORMS`);
+        if (totalFormsInput) {
+            totalFormsInput.value = count;
+            console.log(`Updated ${prefix} total forms to ${count}`);
+        }
+    }
+    
     // Función para actualizar los órdenes
     function updateOrders() {
         const cards = document.querySelectorAll('.content-card');
@@ -306,7 +314,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Función para agregar nueva pregunta
     function addNewQuestion() {
-        const questionCount = document.querySelectorAll('.question-card').length;
+        // Obtener el total actual de preguntas
+        const totalForms = document.querySelector('#id_questions-TOTAL_FORMS');
+        const questionCount = parseInt(totalForms.value);
+        
+        // Actualizar el contador de formset
+        totalForms.value = questionCount + 1;
+        
         const template = `
             <div class="content-card question-card fade-in" data-type="question" data-order="${document.querySelectorAll('.content-card').length}">
                 <div class="card">
@@ -320,17 +334,20 @@ document.addEventListener('DOMContentLoaded', function() {
                         </button>
                     </div>
                     <div class="card-body">
+                        <input type="hidden" name="questions-${questionCount}-id" value="">
                         <div class="form-group">
                             <label for="questions-${questionCount}-text">Texto de la pregunta</label>
-                            <textarea name="questions-${questionCount}-text" class="form-control" rows="3"></textarea>
+                            <textarea name="questions-${questionCount}-text" id="questions-${questionCount}-text" class="form-control" rows="3"></textarea>
                         </div>
                         <div class="form-group mt-3">
                             <label for="questions-${questionCount}-type">Tipo de pregunta</label>
-                            <select name="questions-${questionCount}-type" class="form-control">
+                            <select name="questions-${questionCount}-type" id="questions-${questionCount}-type" class="form-control">
                                 <option value="multiple_choice">Opción Múltiple</option>
                                 <option value="true_false">Verdadero/Falso</option>
                             </select>
                         </div>
+                        <input type="hidden" name="questions-${questionCount}-order" value="${questionCount}">
+                        <input type="hidden" name="questions-${questionCount}-course" value="{{ course.id }}">
                         <div class="mt-4">
                             <h6 class="border-bottom pb-2 mb-3">
                                 Respuestas
@@ -350,9 +367,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const answersContainer = document.querySelector(`.answers-container[data-question-index="${questionCount}"]`);
             if (answersContainer) {
                 for (let i = 0; i < 4; i++) {
-                    const answerTemplate = document.getElementById('answer-template').innerHTML;
-                    const newAnswer = answerTemplate.replace(/{index}/g, questionCount);
-                    answersContainer.insertAdjacentHTML('beforeend', newAnswer);
+                    addNewAnswer(questionCount, i);
                 }
             }
         }
@@ -360,7 +375,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Función para agregar nueva sección
     function addNewSection() {
-        const sectionCount = document.querySelectorAll('.section-card').length;
+        // Obtener el total actual de secciones
+        const totalForms = document.querySelector('#id_sections-TOTAL_FORMS');
+        const sectionCount = parseInt(totalForms.value);
+        
+        // Actualizar el contador de formset
+        totalForms.value = sectionCount + 1;
+        
         const template = `
             <div class="content-card section-card fade-in" data-type="section" data-order="${document.querySelectorAll('.content-card').length}">
                 <div class="card">
@@ -374,18 +395,21 @@ document.addEventListener('DOMContentLoaded', function() {
                         </button>
                     </div>
                     <div class="card-body">
+                        <input type="hidden" name="sections-${sectionCount}-id" value="">
                         <div class="form-group">
                             <label for="sections-${sectionCount}-title">Título</label>
-                            <input type="text" name="sections-${sectionCount}-title" class="form-control">
+                            <input type="text" name="sections-${sectionCount}-title" id="sections-${sectionCount}-title" class="form-control">
                         </div>
                         <div class="form-group mt-3">
                             <label for="sections-${sectionCount}-content">Contenido</label>
-                            <textarea name="sections-${sectionCount}-content" class="form-control" rows="5"></textarea>
+                            <textarea name="sections-${sectionCount}-content" id="sections-${sectionCount}-content" class="form-control" rows="5"></textarea>
                         </div>
                         <div class="form-group mt-3">
                             <label for="sections-${sectionCount}-media">Medio (imagen, documento)</label>
-                            <input type="file" name="sections-${sectionCount}-media" class="form-control">
+                            <input type="file" name="sections-${sectionCount}-media" id="sections-${sectionCount}-media" class="form-control">
                         </div>
+                        <input type="hidden" name="sections-${sectionCount}-order" value="${sectionCount}">
+                        <input type="hidden" name="sections-${sectionCount}-course" value="{{ course.id }}">
                     </div>
                 </div>
             </div>
@@ -398,13 +422,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Función para agregar nueva respuesta
-    function addNewAnswer(questionIndex) {
+    function addNewAnswer(questionIndex, answerIndex) {
         const container = document.querySelector(`.answers-container[data-question-index="${questionIndex}"]`);
         if (!container) return;
         
-        const template = document.getElementById('answer-template').innerHTML;
-        const newAnswer = template.replace(/{index}/g, questionIndex);
-        container.insertAdjacentHTML('beforeend', newAnswer);
+        const template = `
+            <div class="answer-item fade-in">
+                <input type="text" class="form-control" 
+                       name="questions-${questionIndex}-answers" 
+                       placeholder="Ingrese la respuesta">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" 
+                           name="questions-${questionIndex}-is_correct-${answerIndex}">
+                    <label class="form-check-label">Correcta</label>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', template);
     }
     
     // Event Listeners
@@ -430,8 +464,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // Confirmar eliminación
     document.getElementById('confirmDelete').addEventListener('click', function() {
         if (itemToDelete) {
+            const type = itemToDelete.dataset.type;
+            const id = itemToDelete.dataset.id;
+            
+            // Si tiene ID existente, marcar como DELETE en el formset
+            if (id) {
+                // Obtener el índice correcto
+                const items = document.querySelectorAll(`.${type}-card`);
+                const index = Array.from(items).indexOf(itemToDelete);
+                
+                // Agregar campo DELETE para el formset
+                const deleteInput = document.createElement('input');
+                deleteInput.type = 'hidden';
+                deleteInput.name = `${type}s-${index}-DELETE`;
+                deleteInput.value = 'on';
+                document.getElementById('course-form').appendChild(deleteInput);
+            }
+            
+            // Eliminar visualmente
             itemToDelete.remove();
+            
+            // Actualizar contadores y órdenes
             updateOrders();
+            updateFormsetManagementData(`${type}s`, document.querySelectorAll(`.${type}-card`).length);
+            
             deleteModal.hide();
             itemToDelete = null;
         }
@@ -451,19 +507,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 answersContainer.innerHTML = '';
                 
                 // Agregar "Verdadero"
-                addNewAnswer(questionIndex);
+                addNewAnswer(questionIndex, 0);
                 const trueInput = answersContainer.lastElementChild.querySelector('input[type="text"]');
                 trueInput.value = 'Verdadero';
                 
                 // Agregar "Falso"
-                addNewAnswer(questionIndex);
+                addNewAnswer(questionIndex, 1);
                 const falseInput = answersContainer.lastElementChild.querySelector('input[type="text"]');
                 falseInput.value = 'Falso';
             } else {
                 answersContainer.innerHTML = '';
                 // Agregar 4 respuestas para opción múltiple
                 for (let i = 0; i < 4; i++) {
-                    addNewAnswer(questionIndex);
+                    addNewAnswer(questionIndex, i);
                 }
             }
         }
@@ -474,8 +530,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Actualizar los órdenes antes de enviar
         updateOrders();
         
+        // Actualizar contadores de formsets
+        updateFormsetManagementData('questions', document.querySelectorAll('.question-card').length);
+        updateFormsetManagementData('sections', document.querySelectorAll('.section-card').length);
+        
         // Enviar el formulario normalmente
-        courseForm.submit();
+        document.getElementById('course-form').submit();
     });
 });
 </script>

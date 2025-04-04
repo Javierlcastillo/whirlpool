@@ -238,7 +238,7 @@ def manage_course(request, slug=None):
         messages.error(request, "No tienes permiso para acceder a esta página.")
         return redirect('dashboard')
     
-    # Definir los formsets
+    # Definir los formsets con más flexibilidad
     QuestionFormSet = inlineformset_factory(
         Course, Question,
         form=QuestionForm,
@@ -260,67 +260,106 @@ def manage_course(request, slug=None):
         course = get_object_or_404(Course, slug=slug)
     
     if request.method == 'POST':
-        form = CourseForm(request.POST, instance=course)
-        question_formset = QuestionFormSet(request.POST, prefix='questions', instance=course)
-        section_formset = SectionFormSet(request.POST, request.FILES, prefix='sections', instance=course)
+        # Imprimir datos para debug
+        print("POST DATA:", request.POST)
         
-        if form.is_valid() and question_formset.is_valid() and section_formset.is_valid():
-            # Guardar el curso
-            course = form.save(commit=False)
-            if not course.instructor:
-                course.instructor = request.user
-            course.save()
+        form = CourseForm(request.POST, instance=course)
+        
+        if form.is_valid():
+            # Guardar el curso primero para asegurarnos de que tenga ID
+            course = form.save()
             
-            # Guardar preguntas y sus respuestas
-            questions = question_formset.save(commit=False)
-            for i, question in enumerate(questions):
-                question.course = course
-                if f'questions-{i}-order' in request.POST:
-                    question.order = request.POST[f'questions-{i}-order']
-                question.save()  # Guardamos primero la pregunta para que tenga un ID
+            # Procesar formset de preguntas
+            question_formset = QuestionFormSet(request.POST, instance=course, prefix='questions')
+            
+            if question_formset.is_valid():
+                print("Question formset is valid")
+                # Guardar preguntas sin comprometer aún
+                questions = question_formset.save(commit=False)
                 
-                # Procesar las respuestas
-                answers_data = request.POST.getlist(f'questions-{i}-answers')
-                is_correct_data = request.POST.getlist(f'questions-{i}-is_correct')
+                # Procesar cada pregunta
+                for i, question in enumerate(questions):
+                    question.course = course
+                    question.save()  # Guardar la pregunta para que tenga un ID
+                    
+                    print(f"Saved question {i}: {question.id}")
+                    
+                    # Procesar las respuestas para esta pregunta
+                    answer_keys = [k for k in request.POST.keys() if k.startswith(f'questions-{i}-answers')]
+                    
+                    # Solo si hay respuestas para esta pregunta
+                    if answer_keys:
+                        # Primero eliminar respuestas existentes
+                        Answer.objects.filter(question=question).delete()
+                        
+                        # Obtener datos de respuestas
+                        answers_data = request.POST.getlist(f'questions-{i}-answers')
+                        # A veces el checkbox no viene en el request si no está marcado
+                        is_correct_data = []
+                        for j in range(len(answers_data)):
+                            key = f'questions-{i}-is_correct-{j}'
+                            is_correct = key in request.POST or request.POST.get(f'questions-{i}-is_correct') == f'{j}'
+                            is_correct_data.append('on' if is_correct else '')
+                        
+                        # Crear respuestas nuevas
+                        for j, (answer_text, is_correct) in enumerate(zip(answers_data, is_correct_data)):
+                            if answer_text.strip():  # Solo crear respuestas no vacías
+                                Answer.objects.create(
+                                    question=question,
+                                    course=course,
+                                    answer=answer_text,
+                                    is_correct=is_correct == 'on',
+                                    number=j + 1
+                                )
+                                print(f"Created answer {j+1} for question {question.id}")
                 
-                # Eliminar respuestas existentes solo si la pregunta ya existía
-                # Esta es la línea que causa problemas - solo debemos eliminar
-                # answers si ya existen para esta pregunta
-                Answer.objects.filter(question=question).delete()
+                # Procesar eliminaciones de preguntas
+                for obj in question_formset.deleted_objects:
+                    print(f"Deleting question: {obj.id}")
+                    obj.delete()
                 
-                # Crear nuevas respuestas
-                for j, (answer_text, is_correct) in enumerate(zip(answers_data, is_correct_data)):
-                    if answer_text.strip():  # Solo crear respuestas no vacías
-                        Answer.objects.create(
-                            question=question,
-                            course=course,
-                            answer=answer_text,
-                            is_correct=is_correct == 'on',
-                            number=j + 1
-                        )
+                # Procesar formset de secciones
+                section_formset = SectionFormSet(request.POST, request.FILES, instance=course, prefix='sections')
+                
+                if section_formset.is_valid():
+                    print("Section formset is valid")
+                    # Guardar secciones
+                    sections = section_formset.save(commit=False)
+                    
+                    for i, section in enumerate(sections):
+                        section.course = course
+                        section.save()
+                        print(f"Saved section {i}: {section.id}")
+                    
+                    # Procesar eliminaciones de secciones
+                    for obj in section_formset.deleted_objects:
+                        print(f"Deleting section: {obj.id}")
+                        obj.delete()
+                    
+                    # Guardar formsets
+                    question_formset.save_m2m()
+                    section_formset.save_m2m()
+                    
+                    messages.success(request, 'Curso guardado exitosamente.')
+                    return redirect('courses:course-detail', slug=course.slug)
+                else:
+                    print("Section formset errors:", section_formset.errors)
+                    messages.error(request, 'Error al procesar las secciones.')
+            else:
+                print("Question formset errors:", question_formset.errors)
+                messages.error(request, 'Error al procesar las preguntas.')
+        else:
+            print("Form errors:", form.errors)
+            messages.error(request, 'Error al procesar el formulario del curso.')
             
-            # Procesar eliminaciones de preguntas
-            for obj in question_formset.deleted_objects:
-                obj.delete()
-            
-            # Guardar secciones
-            sections = section_formset.save(commit=False)
-            for i, section in enumerate(sections):
-                section.course = course
-                if f'sections-{i}-order' in request.POST:
-                    section.order = request.POST[f'sections-{i}-order']
-                section.save()
-            
-            # Procesar eliminaciones de secciones
-            for obj in section_formset.deleted_objects:
-                obj.delete()
-            
-            messages.success(request, 'Curso guardado exitosamente.')
-            return redirect('courses:course-detail', slug=course.slug)
+        # Si llegamos aquí, algo falló
+        # Recreamos los formsets para la renderización
+        question_formset = QuestionFormSet(request.POST, instance=course, prefix='questions')
+        section_formset = SectionFormSet(request.POST, request.FILES, instance=course, prefix='sections')
     else:
         form = CourseForm(instance=course)
-        question_formset = QuestionFormSet(prefix='questions', instance=course)
-        section_formset = SectionFormSet(prefix='sections', instance=course)
+        question_formset = QuestionFormSet(instance=course, prefix='questions')
+        section_formset = SectionFormSet(instance=course, prefix='sections')
     
     context = {
         'form': form,
