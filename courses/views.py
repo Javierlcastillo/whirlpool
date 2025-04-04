@@ -581,39 +581,61 @@ def course_question_add(request, slug):
     if request.method == 'POST':
         form = QuestionForm(request.POST)
         if form.is_valid():
-            # Guardar la pregunta primero
+            # Crear y guardar la pregunta primero para tener un ID
             question = form.save(commit=False)
             question.course = course
+            
+            # Obtener el último orden y sumar 1
+            last_order = Question.objects.filter(course=course).order_by('-order').first()
+            question.order = (last_order.order + 1) if last_order else 0
+            
+            # Guardar la pregunta PRIMERO para que tenga un ID
             question.save()
             
-            # Procesar las respuestas
-            answers = request.POST.getlist('answers')
-            is_correct = request.POST.getlist('is_correct')
+            # Procesar respuestas
+            answers_data = request.POST.getlist('answers')
+            is_correct_inputs = request.POST.getlist('is_correct')
             
-            # Crear las respuestas
-            for i, answer_text in enumerate(answers):
+            # Depuración
+            print(f"Answers data: {answers_data}")
+            print(f"Is correct inputs: {is_correct_inputs}")
+            
+            # Procesar respuestas con un enfoque más robusto
+            for i, answer_text in enumerate(answers_data):
                 if answer_text.strip():  # Solo crear respuestas no vacías
+                    # Determinar si esta respuesta está marcada como correcta
+                    # El checkbox marcado podría venir de varias formas dependiendo del formulario
+                    is_correct = False
+                    
+                    # Verificar si el valor está en los inputs enviados
+                    if str(i) in is_correct_inputs:
+                        is_correct = True
+                    # O podría venir como "on" si se usa un checkbox normal
+                    elif f"is_correct-{i}" in request.POST:
+                        is_correct = True
+                    
+                    # Crear la respuesta directamente con todos los datos necesarios
+                    # sin usar relaciones que aún no existen
                     Answer.objects.create(
-                        question=question,
+                        question=question,  # Ya tenemos un ID en question
                         course=course,
                         answer=answer_text,
-                        is_correct=str(i) in is_correct,
+                        is_correct=is_correct,
                         number=i + 1
                     )
             
-            messages.success(request, 'Pregunta agregada exitosamente.')
+            messages.success(request, 'Pregunta añadida exitosamente.')
             return redirect('courses:course-edit-questions', slug=course.slug)
         else:
-            messages.error(request, 'Error al guardar la pregunta.')
+            messages.error(request, 'Error al crear la pregunta.')
+            print(f"Form errors: {form.errors}")
     else:
         form = QuestionForm()
     
     context = {
         'form': form,
-        'course': course,
-        'answers': None,  # No hay respuestas para una nueva pregunta
+        'course': course
     }
-    
     return render(request, 'courses/course_question_form.html', context)
 
 @login_required
@@ -625,23 +647,32 @@ def course_question_edit(request, slug, question_id):
     
     course = get_object_or_404(Course, slug=slug)
     question = get_object_or_404(Question, id=question_id, course=course)
-    answers = Answer.objects.filter(question=question).order_by('number')
     
     if request.method == 'POST':
         form = QuestionForm(request.POST, instance=question)
         if form.is_valid():
-            form.save()
+            # Guardamos primero la pregunta para asegurarnos de que tenga un ID
+            # aunque en este caso ya lo tendría
+            question = form.save()
             
-            # Eliminar respuestas existentes
+            # Eliminar respuestas existentes usando filter-delete
+            # esto es más seguro que usar question.answers.all().delete()
             Answer.objects.filter(question=question).delete()
             
             # Procesar nuevas respuestas
             answers_data = request.POST.getlist('answers')
-            is_correct_data = request.POST.getlist('is_correct')
+            is_correct_inputs = request.POST.getlist('is_correct')
             
+            # Depuración
+            print(f"Answers data: {answers_data}")
+            print(f"Is correct inputs: {is_correct_inputs}")
+            
+            # Crear nuevas respuestas
             for i, answer_text in enumerate(answers_data):
                 if answer_text.strip():  # Solo crear respuestas no vacías
-                    is_correct = str(i) in is_correct_data
+                    # Determinar si esta respuesta está marcada como correcta
+                    is_correct = str(i) in is_correct_inputs
+                    
                     Answer.objects.create(
                         question=question,
                         course=course,
@@ -654,6 +685,7 @@ def course_question_edit(request, slug, question_id):
             return redirect('courses:course-edit-questions', slug=course.slug)
         else:
             messages.error(request, 'Error al actualizar la pregunta.')
+            print(f"Form errors: {form.errors}")
     else:
         form = QuestionForm(instance=question)
     
@@ -661,7 +693,6 @@ def course_question_edit(request, slug, question_id):
         'form': form,
         'course': course,
         'question': question,
-        'answers': answers
     }
     return render(request, 'courses/course_question_form.html', context)
 
