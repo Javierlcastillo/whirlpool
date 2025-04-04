@@ -16,6 +16,9 @@
             <a href="{% url 'courses:course-edit-questions' course.slug %}" class="btn btn-primary ms-2">
                 <i class="fas fa-question-circle me-1"></i> Gestionar Preguntas
             </a>
+            <a href="{% url 'courses:course-content-order' course.slug %}" class="btn btn-secondary ms-2">
+                <i class="fas fa-sort me-1"></i> Gestionar Orden
+            </a>
         </div>
     </div>
     <div class="card-body">
@@ -28,11 +31,17 @@
                             <p class="mb-1 text-muted">{{ section.content|truncatechars:100 }}</p>
                         </div>
                         <div class="btn-group">
-                            <a href="{% url 'courses:course-section-edit' course.slug section.id %}" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-edit"></i> Editar
+                            <a href="{% url 'courses:course-section-move' course.slug section.id 'up' %}" class="btn btn-sm btn-outline-secondary" title="Mover arriba">
+                                <i class="fas fa-arrow-up"></i>
                             </a>
-                            <a href="{% url 'courses:course-section-delete' course.slug section.id %}" class="btn btn-sm btn-outline-danger">
-                                <i class="fas fa-trash"></i> Eliminar
+                            <a href="{% url 'courses:course-section-move' course.slug section.id 'down' %}" class="btn btn-sm btn-outline-secondary" title="Mover abajo">
+                                <i class="fas fa-arrow-down"></i>
+                            </a>
+                            <a href="{% url 'courses:course-section-edit' course.slug section.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'courses:course-section-delete' course.slug section.id %}" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                <i class="fas fa-trash"></i>
                             </a>
                         </div>
                     </div>

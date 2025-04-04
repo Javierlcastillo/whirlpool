@@ -3,7 +3,7 @@ from .views import (
     # Course views
     CourseListView, CourseDetailView, CourseDeleteView, manage_course,
     enroll_course, complete_section, complete_question,
-    course_progress, course_certificate,
+    course_progress, course_certificate, course_view_content,
     # Region views
     RegionListView, RegionDetailView, RegionCreateView,
     RegionUpdateView, RegionDeleteView,
@@ -48,6 +48,7 @@ urlpatterns = [
     path('<slug:slug>/eliminar/', CourseDeleteView.as_view(), name='course-delete'),
     path('<slug:slug>/add-region/', add_region_to_course, name='course-add-region'),
     path('<slug:slug>/remove-region/<int:region_id>/', remove_region_from_course, name='course-remove-region'),
+    path('<slug:slug>/view-content/', course_view_content, name='course_view_content'),
 
     # New course management URLs
     path('<slug:slug>/edit/', course_base_edit, name='course-edit'),

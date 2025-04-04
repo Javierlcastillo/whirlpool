@@ -45,7 +45,10 @@
             <div class="card-footer d-flex justify-content-between align-items-center">
                 <span class="text-muted small">Creado: {{ course.created_at|date:"d/m/Y" }}</span>
                 <div>
-                    <a href="{% url 'courses:course-edit' course.slug %}" class="btn btn-primary btn-sm">
+                    <a href="{% url 'courses:course_view_content' slug=course.slug %}" class="btn btn-primary">
+                        <i class="fas fa-sort"></i> Ordenar Contenido
+                    </a>
+                    <a href="{% url 'courses:course-edit' course.slug %}" class="btn btn-primary btn-sm ms-1">
                         <i class="fas fa-edit me-1"></i> Editar
                     </a>
                     <a href="{% url 'courses:course-delete' course.slug %}" class="btn btn-danger btn-sm ms-1">

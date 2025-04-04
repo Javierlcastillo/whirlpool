@@ -1,152 +1,124 @@
 {# templates/courses/course_content_order.html #}
 {% extends 'base.html' %}
 
-{% block title %}Ordenar Contenido - {{ course.name }} - Whirlpool Capacitación{% endblock %}
+{% block title %}{{ course.name }} - Ordenar Contenido{% endblock %}
 
-{% block header_title %}Ordenar Contenido del Curso{% endblock %}
-{% block header_subtitle %}<p class="lead">Curso: {{ course.name }}</p>{% endblock %}
+{% block header_title %}{{ course.name }}{% endblock %}
+{% block header_subtitle %}<p class="lead">Ordenar contenido del curso</p>{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Contenido del Curso</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Arrastra los elementos para ordenarlos. El orden actual se guardará automáticamente.
+                </div>
+                
+                <div id="sortable-content" class="list-group">
+                    {% for item in content_items %}
+                    <div class="list-group-item list-group-item-action d-flex align-items-center" data-id="{{ item.id }}" data-type="{{ item.type }}">
+                        <div class="handle me-3">
+                            <i class="fas fa-grip-vertical text-muted"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center">
+                                <i class="fas {% if item.type == 'section' %}fa-book text-primary{% else %}fa-question-circle text-success{% endif %} me-2"></i>
+                                <span>{{ item.title|truncatechars:50 }}</span>
+                            </div>
+                        </div>
+                        <div class="ms-3">
+                            <span class="badge bg-{% if item.type == 'section' %}primary{% else %}success{% endif %}">
+                                {{ item.type|title }}
+                            </span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="alert alert-warning">
+                        Este curso no tiene contenido para ordenar.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="card-footer bg-white">
+                <a href="{% url 'courses:course-detail' course.slug %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Volver al Curso
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
 
 {% block extrahead %}
 <style>
-    .content-item {
-        padding: 15px;
-        margin-bottom: 10px;
-        border-radius: 5px;
-        border-left: 5px solid;
+    .handle {
+        cursor: move;
     }
     
-    .section-item {
-        border-left-color: #007bff;
-        background-color: rgba(0, 123, 255, 0.1);
+    .list-group-item {
+        transition: transform 0.2s;
     }
     
-    .question-item {
-        border-left-color: #28a745;
-        background-color: rgba(40, 167, 69, 0.1);
-    }
-    
-    .content-item .handle {
-        cursor: grab;
-    }
-    
-    .content-item.dragging {
+    .list-group-item.sortable-ghost {
         opacity: 0.5;
     }
+    
+    .list-group-item.sortable-chosen {
+        background-color: #f8f9fa;
+    }
 </style>
-{% endblock %}
-
-{% block content %}
-<div class="card shadow">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h4 class="mb-0"><i class="fas fa-sort me-2"></i> Gestión de Orden</h4>
-        <div>
-            <a href="{% url 'courses:course-edit-sections' course.slug %}" class="btn btn-outline-primary me-2">
-                <i class="fas fa-list-alt me-1"></i> Secciones
-            </a>
-            <a href="{% url 'courses:course-edit-questions' course.slug %}" class="btn btn-outline-primary">
-                <i class="fas fa-question-circle me-1"></i> Preguntas
-            </a>
-        </div>
-    </div>
-    <div class="card-body">
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i> Arrastre los elementos para cambiar su orden o actualice manualmente los valores numéricos.
-        </div>
-        
-        <form method="post" id="order-form">
-            {% csrf_token %}
-            <div id="content-list" class="mb-4">
-                {% for item in content_items %}
-                <div class="content-item {% if item.content_type == 'section' %}section-item{% else %}question-item{% endif %}" 
-                     data-id="{{ item.id }}" 
-                     data-type="{{ item.content_type }}"
-                     data-order="{{ item.order }}">
-                    <div class="row align-items-center">
-                        <div class="col-1">
-                            <i class="fas fa-grip-vertical handle"></i>
-                        </div>
-                        <div class="col-1">
-                            <input type="number" class="form-control order-input" 
-                                   name="order_{{ item.content_type }}_{{ item.id }}" 
-                                   value="{{ item.order }}" min="0">
-                        </div>
-                        <div class="col-8">
-                            <div class="d-flex align-items-center">
-                                <i class="{% if item.content_type == 'section' %}fas fa-list-alt{% else %}fas fa-question-circle{% endif %} me-2"></i>
-                                <span>{{ item.title }}</span>
-                            </div>
-                        </div>
-                        <div class="col-2 text-end">
-                            <span class="badge {% if item.content_type == 'section' %}bg-primary{% else %}bg-success{% endif %}">
-                                {{ item.content_type|title }}
-                            </span>
-                            <a href="{% if item.content_type == 'section' %}{% url 'courses:course-section-edit' course.slug item.id %}{% else %}{% url 'courses:course-question-edit' course.slug item.id %}{% endif %}" 
-                               class="btn btn-sm btn-outline-secondary ms-2">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                {% empty %}
-                <div class="alert alert-warning">
-                    No hay contenido en este curso. Agregue secciones o preguntas primero.
-                </div>
-                {% endfor %}
-            </div>
-            
-            <div class="text-center">
-                <button type="submit" name="save_order" class="btn btn-primary">
-                    <i class="fas fa-save me-1"></i> Guardar Orden
-                </button>
-                <a href="{% url 'courses:course-detail' course.slug %}" class="btn btn-secondary ms-2">
-                    <i class="fas fa-times me-1"></i> Cancelar
-                </a>
-            </div>
-        </form>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const contentList = document.getElementById('content-list');
-        
-        // Inicializar Sortable
-        new Sortable(contentList, {
-            handle: '.handle',
+        const sortable = new Sortable(document.getElementById('sortable-content'), {
             animation: 150,
-            ghostClass: 'content-item dragging',
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            handle: '.handle',
             onEnd: function(evt) {
-                // Cuando termina el drag, actualizar los valores de orden
-                updateOrderInputs();
-            }
-        });
-        
-        // Función para actualizar valores de inputs después de drag & drop
-        function updateOrderInputs() {
-            // Obtener todos los elementos del contenido
-            const items = document.querySelectorAll('.content-item');
-            
-            // Asignar nuevos valores de orden basados en la posición
-            items.forEach((item, index) => {
-                // Actualizar el atributo data-order
-                item.dataset.order = index;
+                // Obtener el nuevo orden
+                const items = Array.from(document.querySelectorAll('#sortable-content .list-group-item'));
+                const order = items.map((item, index) => ({
+                    id: item.dataset.id,
+                    type: item.dataset.type,
+                    order: index + 1
+                }));
                 
-                // Actualizar el valor del input
-                const input = item.querySelector('.order-input');
-                input.value = index;
-            });
-        }
-        
-        // Event listener para cambios manuales en inputs de orden
-        document.querySelectorAll('.order-input').forEach(input => {
-            input.addEventListener('change', function() {
-                // Si alguien cambia manualmente un valor, reordenar visualmente
-                // Pero esto es complejo - en esta implementación básica solo actualizamos
-                // los valores pero no reordenamos el DOM, eso se hará al guardar
-            });
+                // Enviar el nuevo orden al servidor
+                fetch('{% url "courses:course-content-order" course.slug %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({ order: order })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Mostrar mensaje de éxito
+                        const alert = document.createElement('div');
+                        alert.className = 'alert alert-success alert-dismissible fade show';
+                        alert.innerHTML = `
+                            <i class="fas fa-check-circle me-2"></i>
+                            Orden guardado correctamente.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        `;
+                        document.querySelector('.card-body').insertBefore(alert, document.querySelector('.alert-info'));
+                        
+                        // Eliminar el mensaje después de 3 segundos
+                        setTimeout(() => alert.remove(), 3000);
+                    }
+                });
+            }
         });
     });
 </script>

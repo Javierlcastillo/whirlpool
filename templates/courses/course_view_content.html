@@ -1,0 +1,283 @@
+{# templates/courses/course_view_content.html #}
+{% extends 'base.html' %}
+
+{% block title %}{{ course.name }} - Contenido{% endblock %}
+
+{% block header_title %}{{ course.name }}{% endblock %}
+{% block header_subtitle %}<p class="lead">Contenido del curso ordenado</p>{% endblock %}
+
+{% block extrahead %}
+<style>
+    .content-container {
+        border-left: 3px solid #dee2e6;
+        padding-left: 15px;
+        position: relative;
+    }
+    
+    .content-container::before {
+        content: "";
+        position: absolute;
+        height: 100%;
+        width: 1px;
+        background-color: #dee2e6;
+        left: -1px;
+        top: 0;
+    }
+    
+    .content-item {
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+    
+    .content-item::before {
+        content: "";
+        position: absolute;
+        width: 15px;
+        height: 1px;
+        background-color: #dee2e6;
+        left: -15px;
+        top: 1.5rem;
+    }
+    
+    .content-item-number {
+        position: absolute;
+        left: -2.5rem;
+        top: 0.75rem;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+    
+    .section-card {
+        border-left: 4px solid #007bff;
+    }
+    
+    .question-card {
+        border-left: 4px solid #28a745;
+    }
+    
+    .section-icon {
+        color: #007bff;
+    }
+    
+    .question-icon {
+        color: #28a745;
+    }
+    
+    .nav-link.active {
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-3">
+        <!-- Barra lateral con navegación del curso -->
+        <div class="card sticky-top" style="top: 1rem;">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Contenido del Curso</h5>
+            </div>
+            <div class="card-body p-0">
+                <nav class="nav flex-column">
+                    {% for item in content_items %}
+                    <a class="nav-link py-2 ps-3 border-bottom" href="#item-{{ item.type }}-{{ item.id }}">
+                        <div class="d-flex align-items-center">
+                            <span class="me-2">{{ item.display_order }}.</span>
+                            <i class="fas {% if item.type == 'section' %}fa-book section-icon{% else %}fa-question-circle question-icon{% endif %} me-2"></i>
+                            <span>{{ item.title|truncatechars:25 }}</span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </nav>
+            </div>
+            {% if is_instructor %}
+            <div class="card-footer bg-white">
+                <a href="{% url 'courses:course-content-order' course.slug %}" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="fas fa-edit me-1"></i> Editar Orden
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="col-lg-9">
+        <!-- Contenido principal -->
+        <div class="card">
+            <div class="card-header bg-white">
+                <h4 class="mb-0">Lecciones y Evaluaciones</h4>
+            </div>
+            <div class="card-body">
+                <div class="content-container">
+                    {% for item in content_items %}
+                    <div class="content-item" id="item-{{ item.type }}-{{ item.id }}">
+                        <div class="content-item-number">{{ item.display_order }}</div>
+                        
+                        {% if item.type == 'section' %}
+                        <!-- Sección de contenido -->
+                        <div class="card section-card">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-book section-icon me-2"></i>
+                                    {{ item.title }}
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    {{ item.content|safe }}
+                                </div>
+                                
+                                {% if item.media %}
+                                <div class="text-center">
+                                    <img src="{{ item.media.url }}" alt="{{ item.title }}" class="img-fluid rounded">
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% if is_instructor %}
+                            <div class="card-footer bg-white text-end">
+                                <a href="{% url 'courses:course-section-edit' course.slug item.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-edit me-1"></i> Editar
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <!-- Pregunta de evaluación -->
+                        <div class="card question-card">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-question-circle question-icon me-2"></i>
+                                    Pregunta
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <p class="fw-bold">{{ item.text }}</p>
+                                </div>
+                                
+                                <h6 class="mt-4 mb-3">Respuestas:</h6>
+                                {% if item.type == 'multiple_choice' %}
+                                <div class="list-group">
+                                    {% for answer in item.answers %}
+                                    <div class="list-group-item list-group-item-action {% if is_instructor and answer.is_correct %}list-group-item-success{% endif %}">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="answer_{{ item.id }}" id="answer_{{ answer.id }}" value="{{ answer.id }}">
+                                            <label class="form-check-label w-100" for="answer_{{ answer.id }}">
+                                                {{ answer.answer }}
+                                                {% if is_instructor and answer.is_correct %}
+                                                <span class="badge bg-success float-end">Correcta</span>
+                                                {% endif %}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check mb-3">
+                                            <input class="form-check-input" type="radio" name="answer_{{ item.id }}" id="answer_true_{{ item.id }}" value="true">
+                                            <label class="form-check-label" for="answer_true_{{ item.id }}">
+                                                Verdadero
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check mb-3">
+                                            <input class="form-check-input" type="radio" name="answer_{{ item.id }}" id="answer_false_{{ item.id }}" value="false">
+                                            <label class="form-check-label" for="answer_false_{{ item.id }}">
+                                                Falso
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% if is_instructor %}
+                                <div class="alert alert-info mt-3">
+                                    <strong>Respuesta correcta:</strong> 
+                                    {% for answer in item.answers %}
+                                    {% if answer.is_correct %}
+                                    {{ answer.answer }}
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                {% endif %}
+                            </div>
+                            {% if is_instructor %}
+                            <div class="card-footer bg-white text-end">
+                                <a href="{% url 'courses:course-question-edit' course.slug item.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-edit me-1"></i> Editar
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% empty %}
+                    <div class="alert alert-info">
+                        Este curso aún no tiene contenido.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Activar el elemento de navegación cuando se desplaza a su sección
+        const navLinks = document.querySelectorAll('.nav-link');
+        const contentItems = document.querySelectorAll('.content-item');
+        
+        function setActiveNavItem() {
+            let currentActive = null;
+            
+            contentItems.forEach((item, index) => {
+                const rect = item.getBoundingClientRect();
+                // Si el elemento está en la parte superior de la pantalla o es el primero visible
+                if (rect.top <= 100 && rect.bottom > 0) {
+                    currentActive = index;
+                }
+            });
+            
+            // Actualizar la clase activa
+            navLinks.forEach(link => link.classList.remove('active'));
+            if (currentActive !== null) {
+                navLinks[currentActive].classList.add('active');
+            } else if (navLinks.length > 0) {
+                // Si ninguno está activo, marcar el primero
+                navLinks[0].classList.add('active');
+            }
+        }
+        
+        // Ejecutar al cargar y al desplazarse
+        setActiveNavItem();
+        window.addEventListener('scroll', setActiveNavItem);
+        
+        // Suavizar el desplazamiento al hacer clic en los enlaces
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 20,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

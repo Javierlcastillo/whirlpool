@@ -108,6 +108,52 @@ class Course(models.Model):
     def get_absolute_url(self):
         return reverse('courses:course-detail', kwargs={'slug': self.slug})
 
+    def get_ordered_content(self):
+        """
+        Obtiene el contenido del curso (secciones y preguntas) en el orden correcto.
+        """
+        # Obtener secciones y preguntas ordenadas
+        sections = self.sections.all().order_by('order')
+        questions = self.questions.all().order_by('order')
+        
+        # Combinar en una lista ordenada
+        content_items = []
+        
+        # Agregar secciones
+        for section in sections:
+            content_items.append({
+                'type': 'section',
+                'id': section.id,
+                'title': section.title,
+                'content': section.content,
+                'media': section.media,
+                'order': section.order
+            })
+        
+        # Agregar preguntas
+        for question in questions:
+            content_items.append({
+                'type': 'question',
+                'id': question.id,
+                'text': question.text,
+                'type': question.type,
+                'order': question.order,
+                'answers': [
+                    {
+                        'id': answer.id,
+                        'answer': answer.answer,
+                        'is_correct': answer.is_correct,
+                        'number': answer.number
+                    }
+                    for answer in question.answers.all()
+                ]
+            })
+        
+        # Ordenar por el campo 'order'
+        content_items.sort(key=lambda x: x['order'])
+        
+        return content_items
+
 class CourseApplication(models.Model):
     """Modelo para aplicación de cursos a regiones."""
     course = models.ForeignKey(

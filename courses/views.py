@@ -963,3 +963,45 @@ def course_question_move(request, slug, question_id, direction):
         messages.warning(request, "No se puede mover más la pregunta en esa dirección.")
     
     return redirect('courses:course-edit-questions', slug=course.slug)
+
+@login_required
+def course_view_content(request, slug):
+    """
+    Vista para que los estudiantes vean el contenido del curso en el orden correcto.
+    """
+    course = get_object_or_404(Course, slug=slug)
+    
+    # Verificar si el usuario tiene acceso al curso (si es técnico)
+    # o si es administrador (puede ver todo)
+    has_access = request.user.is_superuser
+    
+    if hasattr(request.user, 'technician'):
+        try:
+            technician = request.user.technician
+            if CourseApplication.objects.filter(
+                course=course, region=technician.region
+            ).exists():
+                has_access = True
+                
+                # Obtener o crear registro de progreso
+                desempeno, created = Desempeno.objects.get_or_create(
+                    course=course,
+                    technician=technician,
+                    defaults={'estado': 'started'}
+                )
+        except:
+            pass
+    
+    if not has_access:
+        messages.error(request, "No tienes acceso a este curso.")
+        return redirect('dashboard')
+    
+    # Obtener contenido ordenado
+    content_items = course.get_ordered_content()
+    
+    context = {
+        'course': course,
+        'content_items': content_items,
+        'is_instructor': request.user.is_superuser,
+    }
+    return render(request, 'courses/course_view_content.html', context)
