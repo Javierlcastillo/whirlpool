@@ -3,13 +3,13 @@ version: '3.8'
 services:
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8080
+    command: python manage.py runserver 0.0.0.0:3000
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/media
     ports:
-      - "8080:8080"
+      - "3000:3000"
     environment:
       - DEBUG=1
       - SECRET_KEY=your-secret-key

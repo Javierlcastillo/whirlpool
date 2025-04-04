@@ -35,11 +35,11 @@ while ! nc -z db 5432; do\n\
   sleep 0.1\n\
 done\n\
 python manage.py migrate\n\
-python manage.py runserver 0.0.0.0:8080' > /app/start.sh && \
+python manage.py runserver 0.0.0.0:3000' > /app/start.sh && \
 chmod +x /app/start.sh
 
 # Exponer el puerto
-EXPOSE 8080
+EXPOSE 3000
 
 # Comando de inicio
 CMD ["/app/start.sh"]
