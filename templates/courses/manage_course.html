@@ -106,8 +106,15 @@
 
 <div class="row">
     <div class="col-12">
-        <form method="post" enctype="multipart/form-data" id="course-form" onsubmit="return false;">
+        <form method="post" enctype="multipart/form-data" id="course-form" onsubmit="return false;" 
+              action="{% if course %}{% url 'courses:course-update' course.slug %}{% else %}{% url 'courses:course-create' %}{% endif %}">
             {% csrf_token %}
+            
+            <!-- Campos de administración del formset de preguntas -->
+            {{ question_formset.management_form }}
+            
+            <!-- Campos de administración del formset de secciones -->
+            {{ section_formset.management_form }}
             
             <!-- Información del Curso -->
             <div class="card mb-4 shadow">
@@ -159,7 +166,7 @@
                         {% if question_formset.forms %}
                             {% for form in question_formset.forms %}
                                 {% if form.instance.pk %}
-                                <div class="content-card question-card fade-in" data-type="question" data-order="{{ forloop.counter0 }}">
+                                <div class="content-card question-card fade-in" data-type="question" data-order="{{ forloop.counter0 }}" data-id="{{ form.instance.id }}">
                                     <div class="card">
                                         <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                             <h5 class="mb-0">
@@ -206,7 +213,7 @@
                         {% if section_formset.forms %}
                             {% for form in section_formset.forms %}
                                 {% if form.instance.pk %}
-                                <div class="content-card section-card fade-in" data-type="section" data-order="{{ forloop.counter0 }}">
+                                <div class="content-card section-card fade-in" data-type="section" data-order="{{ forloop.counter0 }}" data-id="{{ form.instance.id }}">
                                     <div class="card">
                                         <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                             <h5 class="mb-0">
@@ -338,10 +345,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (contentContainer) {
             contentContainer.insertAdjacentHTML('beforeend', template);
             updateOrders();
+            
             // Inicializar respuestas para opción múltiple
             const answersContainer = document.querySelector(`.answers-container[data-question-index="${questionCount}"]`);
-            for (let i = 0; i < 4; i++) {
-                addNewAnswer(questionCount);
+            if (answersContainer) {
+                for (let i = 0; i < 4; i++) {
+                    const answerTemplate = document.getElementById('answer-template').innerHTML;
+                    const newAnswer = answerTemplate.replace(/{index}/g, questionCount);
+                    answersContainer.insertAdjacentHTML('beforeend', newAnswer);
+                }
             }
         }
     }
@@ -466,14 +478,41 @@ document.addEventListener('DOMContentLoaded', function() {
         // Preparar los datos del formulario
         const formData = new FormData(courseForm);
         
-        // Agregar los campos de orden
-        const questions = document.querySelectorAll('.question-card');
-        questions.forEach((question, index) => {
+        // Agregar datos de administración para el formset de preguntas
+        const questionCards = document.querySelectorAll('.question-card');
+        const totalQuestions = questionCards.length;
+        formData.set('questions-TOTAL_FORMS', totalQuestions.toString());
+        formData.set('questions-INITIAL_FORMS', document.querySelectorAll('.question-card[data-id]').length.toString() || '0');
+        formData.set('questions-MIN_NUM_FORMS', '0');
+        formData.set('questions-MAX_NUM_FORMS', '1000');
+        
+        // Agregar datos de administración para el formset de secciones
+        const sectionCards = document.querySelectorAll('.section-card');
+        const totalSections = sectionCards.length;
+        formData.set('sections-TOTAL_FORMS', totalSections.toString());
+        formData.set('sections-INITIAL_FORMS', document.querySelectorAll('.section-card[data-id]').length.toString() || '0');
+        formData.set('sections-MIN_NUM_FORMS', '0');
+        formData.set('sections-MAX_NUM_FORMS', '1000');
+        
+        // Agregar los campos de orden y respuestas para cada pregunta
+        questionCards.forEach((question, index) => {
             formData.append(`questions-${index}-order`, question.dataset.order);
+            
+            // Agregar respuestas para la pregunta
+            const answersContainer = question.querySelector('.answers-container');
+            if (answersContainer) {
+                const answers = answersContainer.querySelectorAll('.answer-item');
+                answers.forEach((answer, answerIndex) => {
+                    const answerText = answer.querySelector('input[type="text"]').value;
+                    const isCorrect = answer.querySelector('input[type="checkbox"]').checked;
+                    formData.append(`questions-${index}-answers`, answerText);
+                    formData.append(`questions-${index}-is_correct`, isCorrect ? 'on' : '');
+                });
+            }
         });
         
-        const sections = document.querySelectorAll('.section-card');
-        sections.forEach((section, index) => {
+        // Agregar los campos de orden para las secciones
+        sectionCards.forEach((section, index) => {
             formData.append(`sections-${index}-order`, section.dataset.order);
         });
         
