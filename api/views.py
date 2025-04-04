@@ -49,7 +49,7 @@ class CourseViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['category', 'instructor__id', 'region__id']
     search_fields = ['name', 'description']
-    ordering_fields = ['name', 'created_at', 'duration_weeks']
+    ordering_fields = ['name', 'created_at', 'duration_hours']
     ordering = ['-created_at']
     permission_classes = [IsAdminUserOrReadOnly]
     
@@ -83,6 +83,24 @@ class TechnicianViewSet(viewsets.ModelViewSet):
         if self.action == 'retrieve':
             return TechnicianDetailSerializer
         return TechnicianSerializer
+    
+    @action(detail=True, methods=['get'])
+    def available_courses(self, request, pk=None):
+        """
+        Obtiene los cursos disponibles para un técnico basado en su región.
+        """
+        technician = self.get_object()
+        
+        # Encuentra todos los cursos disponibles en la región del técnico
+        region = technician.region
+        if not region:
+            return Response({"detail": "Este técnico no tiene una región asignada."}, status=400)
+            
+        course_applications = CourseApplication.objects.filter(region=region)
+        available_courses = [app.course for app in course_applications]
+        
+        serializer = CourseSerializer(available_courses, many=True)
+        return Response(serializer.data)
 
 class RegionViewSet(viewsets.ModelViewSet):
     """
@@ -148,20 +166,29 @@ class CourseApplicationViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
 class EnrollmentViewSet(viewsets.ModelViewSet):
-    queryset = CourseApplication.objects.all()  # Usamos CourseApplication como Enrollment
+    queryset = CourseApplication.objects.all()
     serializer_class = EnrollmentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    @action(detail=True, methods=['post'])
-    def enroll(self, request, pk=None):
+    @action(detail=True, methods=['get'])
+    def check_availability(self, request, pk=None):
+        """
+        Verifica si un curso está disponible para un técnico basado en su región.
+        """
         course = get_object_or_404(Course, pk=pk)
         technician = get_object_or_404(Technician, user=request.user)
         
-        enrollment, created = CourseApplication.objects.get_or_create(
-            course=course,
-            region=technician.region
-        )
+        # Verificar si el curso está disponible en la región del técnico
+        is_available = CourseApplication.objects.filter(
+            course=course, region=technician.region
+        ).exists()
         
-        if created:
-            return Response({'status': 'enrolled'})
-        return Response({'status': 'already enrolled'})
+        # Crear o actualizar registro de desempeño si el curso está disponible
+        if is_available:
+            desempeno, created = Desempeno.objects.get_or_create(
+                course=course,
+                technician=technician,
+                defaults={'estado': 'started'}
+            )
+        
+        return Response({'is_available': is_available})

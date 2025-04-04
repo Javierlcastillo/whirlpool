@@ -32,7 +32,7 @@
                 <form method="post">
                     {% csrf_token %}
                     <div class="d-flex justify-content-center mt-4">
-                        <a href="{% url 'technician-list' %}" class="btn btn-secondary me-2">
+                        <a href="{% url 'users:technician-list' %}" class="btn btn-secondary me-2">
                             <i class="fas fa-times me-1"></i> Cancelar
                         </a>
                         <button type="submit" class="btn btn-danger">

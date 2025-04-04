@@ -80,25 +80,28 @@ class CourseDetailView(LoginRequiredMixin, DetailView):
         # Para propósitos del template, listar todas las regiones disponibles
         context['all_regions'] = Region.objects.all()
         
-        # MODIFICAR ESTA PARTE PARA USAR DESEMPENO EN LUGAR DE ENROLLMENTS
-        # Verificar si el usuario ya está inscrito
-        if hasattr(request.user, 'technician'):
+        # Verificar si el curso está disponible para el técnico basado en su región
+        if hasattr(self.request.user, 'technician'):
             try:
-                technician = request.user.technician
-                context['is_enrolled'] = Desempeno.objects.filter(
-                    course=course, technician=technician
+                technician = self.request.user.technician
+                # Verificar si el curso está disponible en la región del técnico
+                context['is_available'] = CourseApplication.objects.filter(
+                    course=course, region=technician.region
                 ).exists()
                 
-                if context['is_enrolled']:
+                # Obtener el desempeño si existe
+                try:
                     desempeno = Desempeno.objects.get(
                         course=course, technician=technician
                     )
                     context['progress'] = desempeno
+                except Desempeno.DoesNotExist:
+                    pass
                 
-            except (Technician.DoesNotExist, Desempeno.DoesNotExist):
-                context['is_enrolled'] = False
+            except Technician.DoesNotExist:
+                context['is_available'] = False
         else:
-            context['is_enrolled'] = False
+            context['is_available'] = False
         
         return context
 
@@ -111,24 +114,31 @@ class CourseDeleteView(LoginRequiredMixin, DeleteView):
 
 @login_required
 def enroll_course(request, slug):
-    """Vista para inscribir a un usuario en un curso."""
+    """
+    Vista para verificar si un técnico tiene acceso a un curso basado en su región.
+    Los técnicos automáticamente tienen acceso a cursos disponibles en su región.
+    """
     course = get_object_or_404(Course, slug=slug)
     technician = get_object_or_404(Technician, user=request.user)
     
-    # Verificar si el usuario ya está inscrito
-    if Desempeno.objects.filter(course=course, technician=technician).exists():
-        messages.warning(request, "Ya estás inscrito en este curso.")
+    # Verificar si el curso está disponible en la región del técnico
+    if not CourseApplication.objects.filter(course=course, region=technician.region).exists():
+        messages.warning(request, "Este curso no está disponible en tu región.")
         return redirect('courses:course-detail', slug=slug)
     
-    # Crear la inscripción
-    Desempeno.objects.create(
+    # Crear o actualizar el registro de desempeño para seguimiento
+    desempeno, created = Desempeno.objects.get_or_create(
         course=course,
         technician=technician,
-        estado='started'
+        defaults={'estado': 'started'}
     )
     
-    messages.success(request, f"Te has inscrito exitosamente en el curso {course.name}")
-    return redirect('course-detail', slug=slug)
+    if created:
+        messages.success(request, f"Has comenzado el curso {course.name}")
+    else:
+        messages.info(request, f"Ya tienes acceso al curso {course.name}")
+        
+    return redirect('courses:course-detail', slug=slug)
 
 @login_required
 def complete_section(request, slug, section_id):

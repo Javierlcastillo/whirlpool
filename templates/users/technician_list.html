@@ -18,7 +18,7 @@
         </form>
     </div>
     <div class="col-md-6 text-md-end">
-        <a href="{% url 'technician-create' %}" class="btn btn-primary">
+        <a href="{% url 'users:technician-create' %}" class="btn btn-primary">
             <i class="fas fa-plus-circle me-1"></i> Nuevo Técnico
         </a>
     </div>
@@ -48,7 +48,7 @@
             </div>
             <div class="col-md-8 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary me-2">Aplicar Filtros</button>
-                <a href="{% url 'technician-list' %}" class="btn btn-outline-secondary">Limpiar</a>
+                <a href="{% url 'users:technician-list' %}" class="btn btn-outline-secondary">Limpiar</a>
             </div>
         </form>
     </div>
@@ -77,7 +77,7 @@
                     {% for technician in technicians %}
                     <tr>
                         <td>
-                            <a href="{% url 'technician-detail' technician.pk %}" class="text-decoration-none fw-bold">
+                            <a href="{% url 'users:technician-detail' technician.pk %}" class="text-decoration-none fw-bold">
                                 {{ technician.user.get_full_name }}
                             </a>
                         </td>
@@ -93,13 +93,13 @@
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <a href="{% url 'technician-detail' technician.pk %}" class="btn btn-outline-primary" title="Ver">
+                                <a href="{% url 'users:technician-detail' technician.pk %}" class="btn btn-outline-primary" title="Ver">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{% url 'technician-update' technician.pk %}" class="btn btn-outline-secondary" title="Editar">
+                                <a href="{% url 'users:technician-update' technician.pk %}" class="btn btn-outline-secondary" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="{% url 'technician-delete' technician.pk %}" class="btn btn-outline-danger" title="Eliminar">
+                                <a href="{% url 'users:technician-delete' technician.pk %}" class="btn btn-outline-danger" title="Eliminar">
                                     <i class="fas fa-trash"></i>
                                 </a>
                             </div>
@@ -109,7 +109,7 @@
                     <tr>
                         <td colspan="6" class="text-center py-4">
                             <p class="text-muted mb-0">No hay técnicos disponibles.</p>
-                            <a href="{% url 'technician-create' %}" class="btn btn-primary mt-3">
+                            <a href="{% url 'users:technician-create' %}" class="btn btn-primary mt-3">
                                 <i class="fas fa-plus-circle me-1"></i> Crear Primer Técnico
                             </a>
                         </td>
