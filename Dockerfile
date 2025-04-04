@@ -39,7 +39,7 @@ python manage.py runserver 0.0.0.0:8080' > /app/start.sh && \
 chmod +x /app/start.sh
 
 # Exponer el puerto
-EXPOSE 8000
+EXPOSE 8080
 
 # Comando de inicio
 CMD ["/app/start.sh"]
