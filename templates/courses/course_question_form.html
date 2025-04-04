@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
+{% load course_extras %}
 
 {% block title %}{{ question|yesno:"Editar,Nueva" }} Pregunta - {{ course.name }} - Whirlpool Capacitación{% endblock %}
 
