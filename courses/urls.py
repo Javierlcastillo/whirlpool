@@ -15,7 +15,7 @@ from .views import (
     # New course management URLs
     course_base_edit, course_sections_edit, course_section_add, course_section_edit,
     course_section_delete, course_questions_edit, course_question_add, course_question_edit,
-    course_question_delete
+    course_question_delete, course_content_order, course_section_move, course_question_move
 )
 
 app_name = 'courses'
@@ -59,4 +59,7 @@ urlpatterns = [
     path('<slug:slug>/question/add/', course_question_add, name='course-question-add'),
     path('<slug:slug>/question/<int:question_id>/edit/', course_question_edit, name='course-question-edit'),
     path('<slug:slug>/question/<int:question_id>/delete/', course_question_delete, name='course-question-delete'),
+    path('<slug:slug>/order/', course_content_order, name='course-content-order'),
+    path('<slug:slug>/section/<int:section_id>/move/<str:direction>/', course_section_move, name='course-section-move'),
+    path('<slug:slug>/question/<int:question_id>/move/<str:direction>/', course_question_move, name='course-question-move'),
 ]

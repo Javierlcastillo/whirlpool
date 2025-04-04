@@ -483,26 +483,58 @@ def course_section_add(request, slug):
     course = get_object_or_404(Course, slug=slug)
     
     if request.method == 'POST':
-        form = SectionForm(request.POST, request.FILES)
-        if form.is_valid():
-            section = form.save(commit=False)
-            section.course = course
-            # Obtener el último orden y sumar 1
-            last_order = Section.objects.filter(course=course).order_by('-order').first()
-            section.order = (last_order.order + 1) if last_order else 0
-            section.save()
-            messages.success(request, 'Sección añadida exitosamente.')
-            return redirect('courses:course-edit-sections', slug=course.slug)
+        # Usamos la misma estrategia que funcionó para las preguntas
+        # Evitamos usar el formulario Django para guardar
+        title = request.POST.get('title', '')
+        content = request.POST.get('content', '')
+        
+        # Si hay archivos subidos, los manejamos aparte
+        media_file = request.FILES.get('media', None)
+        
+        print(f"POST data: {request.POST}")
+        print(f"Title: {title}")
+        print(f"Content: {content[:100]}...")  # Mostrar solo los primeros 100 caracteres
+        print(f"Media file: {media_file}")
+        
+        if title and content:
+            try:
+                # Calcular el orden
+                last_order = Section.objects.filter(course=course).order_by('-order').first()
+                order_value = (last_order.order + 1) if last_order else 0
+                
+                # Crear sección directamente
+                section = Section(
+                    course=course,
+                    title=title,
+                    content=content,
+                    order=order_value
+                )
+                
+                # Asignar el archivo si existe
+                if media_file:
+                    section.media = media_file
+                    
+                section.save()
+                
+                print(f"Section created with ID: {section.id}, order: {section.order}")
+                
+                messages.success(request, 'Sección añadida exitosamente.')
+                return redirect('courses:course-edit-sections', slug=course.slug)
+            except Exception as e:
+                print(f"Error creating section: {e}")
+                messages.error(request, f'Error al crear la sección: {str(e)}')
         else:
-            messages.error(request, 'Error al crear la sección.')
-    else:
-        form = SectionForm()
+            messages.error(request, 'Datos incompletos. Por favor, proporcione título y contenido.')
+    
+    # Para GET o si POST falla, mostrar el formulario
+    form = SectionForm()
     
     context = {
         'form': form,
         'course': course
     }
     return render(request, 'courses/course_section_form.html', context)
+
 
 @login_required
 def course_section_edit(request, slug, section_id):
@@ -515,15 +547,42 @@ def course_section_edit(request, slug, section_id):
     section = get_object_or_404(Section, id=section_id, course=course)
     
     if request.method == 'POST':
-        form = SectionForm(request.POST, request.FILES, instance=section)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Sección actualizada exitosamente.')
-            return redirect('courses:course-edit-sections', slug=course.slug)
+        # Usamos la misma estrategia que funcionó para las preguntas
+        title = request.POST.get('title', '')
+        content = request.POST.get('content', '')
+        
+        # Si hay archivos subidos, los manejamos aparte
+        media_file = request.FILES.get('media', None)
+        
+        print(f"POST data (edit): {request.POST}")
+        print(f"Title: {title}")
+        print(f"Content: {content[:100]}...")  # Mostrar solo los primeros 100 caracteres
+        print(f"Media file: {media_file}")
+        
+        if title and content:
+            try:
+                # Actualizar sección
+                section.title = title
+                section.content = content
+                
+                # Actualizar archivo si hay uno nuevo
+                if media_file:
+                    section.media = media_file
+                    
+                section.save()
+                
+                print(f"Section updated: {section.id}, order: {section.order}")
+                
+                messages.success(request, 'Sección actualizada exitosamente.')
+                return redirect('courses:course-edit-sections', slug=course.slug)
+            except Exception as e:
+                print(f"Error updating section: {e}")
+                messages.error(request, f'Error al actualizar la sección: {str(e)}')
         else:
-            messages.error(request, 'Error al actualizar la sección.')
-    else:
-        form = SectionForm(instance=section)
+            messages.error(request, 'Datos incompletos. Por favor, proporcione título y contenido.')
+    
+    # Para GET, cargar el formulario con los datos existentes
+    form = SectionForm(instance=section)
     
     context = {
         'form': form,
@@ -733,3 +792,174 @@ def course_question_delete(request, slug, question_id):
         'question': question
     }
     return render(request, 'courses/course_question_confirm_delete.html', context)
+
+# Añadir estas nuevas vistas para gestionar el orden
+
+@login_required
+def course_content_order(request, slug):
+    """Vista para gestionar el orden de secciones y preguntas del curso."""
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('dashboard')
+    
+    course = get_object_or_404(Course, slug=slug)
+    sections = Section.objects.filter(course=course).order_by('order')
+    questions = Question.objects.filter(course=course).order_by('order')
+    
+    # Combinar secciones y preguntas para mostrar en orden único
+    # Usamos un atributo temporal 'content_type' para identificar el tipo
+    content_items = []
+    
+    for section in sections:
+        content_items.append({
+            'id': section.id,
+            'title': section.title,
+            'content_type': 'section',
+            'order': section.order,
+            'object': section
+        })
+    
+    for question in questions:
+        content_items.append({
+            'id': question.id,
+            'title': question.text[:100] + ('...' if len(question.text) > 100 else ''),
+            'content_type': 'question',
+            'order': question.order,
+            'object': question
+        })
+    
+    # Ordenar todos los items por el campo order
+    content_items.sort(key=lambda x: x['order'])
+    
+    if request.method == 'POST':
+        # Procesar cambios de orden
+        if 'save_order' in request.POST:
+            try:
+                # Obtener los nuevos órdenes desde el formulario
+                new_orders = {}
+                for key, value in request.POST.items():
+                    if key.startswith('order_section_') or key.startswith('order_question_'):
+                        item_type, item_id = key.replace('order_', '').split('_')
+                        new_orders[f"{item_type}_{item_id}"] = int(value)
+                
+                # Actualizar órdenes en la base de datos
+                for key, new_order in new_orders.items():
+                    item_type, item_id = key.split('_')
+                    if item_type == 'section':
+                        section = get_object_or_404(Section, id=item_id, course=course)
+                        section.order = new_order
+                        section.save()
+                        print(f"Updated section {item_id} order to {new_order}")
+                    elif item_type == 'question':
+                        question = get_object_or_404(Question, id=item_id, course=course)
+                        question.order = new_order
+                        question.save()
+                        print(f"Updated question {item_id} order to {new_order}")
+                
+                messages.success(request, 'Orden actualizado exitosamente.')
+                return redirect('courses:course-content-order', slug=course.slug)
+            except Exception as e:
+                print(f"Error updating order: {e}")
+                messages.error(request, f'Error al actualizar el orden: {str(e)}')
+    
+    context = {
+        'course': course,
+        'content_items': content_items
+    }
+    return render(request, 'courses/course_content_order.html', context)
+
+@login_required
+def course_section_move(request, slug, section_id, direction):
+    """Vista para mover una sección hacia arriba o abajo en el orden."""
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('dashboard')
+    
+    course = get_object_or_404(Course, slug=slug)
+    section = get_object_or_404(Section, id=section_id, course=course)
+    
+    # Obtener todas las secciones ordenadas
+    sections = Section.objects.filter(course=course).order_by('order')
+    
+    # Encontrar la sección actual y su índice
+    current_index = -1
+    for i, s in enumerate(sections):
+        if s.id == section.id:
+            current_index = i
+            break
+    
+    if current_index == -1:
+        messages.error(request, "Sección no encontrada en el curso.")
+        return redirect('courses:course-edit-sections', slug=course.slug)
+    
+    # Determinar nueva posición basada en la dirección
+    if direction == 'up' and current_index > 0:
+        # Intercambiar con la sección anterior
+        prev_section = sections[current_index - 1]
+        temp_order = section.order
+        section.order = prev_section.order
+        prev_section.order = temp_order
+        section.save()
+        prev_section.save()
+        messages.success(request, 'Sección movida hacia arriba exitosamente.')
+    elif direction == 'down' and current_index < len(sections) - 1:
+        # Intercambiar con la sección siguiente
+        next_section = sections[current_index + 1]
+        temp_order = section.order
+        section.order = next_section.order
+        next_section.order = temp_order
+        section.save()
+        next_section.save()
+        messages.success(request, 'Sección movida hacia abajo exitosamente.')
+    else:
+        messages.warning(request, "No se puede mover más la sección en esa dirección.")
+    
+    return redirect('courses:course-edit-sections', slug=course.slug)
+
+@login_required
+def course_question_move(request, slug, question_id, direction):
+    """Vista para mover una pregunta hacia arriba o abajo en el orden."""
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('dashboard')
+    
+    course = get_object_or_404(Course, slug=slug)
+    question = get_object_or_404(Question, id=question_id, course=course)
+    
+    # Obtener todas las preguntas ordenadas
+    questions = Question.objects.filter(course=course).order_by('order')
+    
+    # Encontrar la pregunta actual y su índice
+    current_index = -1
+    for i, q in enumerate(questions):
+        if q.id == question.id:
+            current_index = i
+            break
+    
+    if current_index == -1:
+        messages.error(request, "Pregunta no encontrada en el curso.")
+        return redirect('courses:course-edit-questions', slug=course.slug)
+    
+    # Determinar nueva posición basada en la dirección
+    if direction == 'up' and current_index > 0:
+        # Intercambiar con la pregunta anterior
+        prev_question = questions[current_index - 1]
+        temp_order = question.order
+        question.order = prev_question.order
+        prev_question.order = temp_order
+        question.save()
+        prev_question.save()
+        messages.success(request, 'Pregunta movida hacia arriba exitosamente.')
+    elif direction == 'down' and current_index < len(questions) - 1:
+        # Intercambiar con la pregunta siguiente
+        next_question = questions[current_index + 1]
+        temp_order = question.order
+        question.order = next_question.order
+        next_question.order = temp_order
+        question.save()
+        next_question.save()
+        messages.success(request, 'Pregunta movida hacia abajo exitosamente.')
+    else:
+        messages.warning(request, "No se puede mover más la pregunta en esa dirección.")
+    
+    return redirect('courses:course-edit-questions', slug=course.slug)
