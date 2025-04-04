@@ -1,21 +1,25 @@
 from django import forms
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Submit, Row, Column, Div, HTML
+from crispy_forms.layout import Layout, Submit, Row, Column, Div, HTML, Fieldset, Field
 
 from .models import Course, Section, Question, Answer, Region, Instructor, CourseApplication, Desempeno
+
+User = get_user_model()
 
 class CourseForm(forms.ModelForm):
     """Formulario para crear/editar cursos."""
     
     class Meta:
         model = Course
-        fields = ['name', 'description', 'instructor', 'duration_hours', 'region']
+        fields = ['name', 'description', 'instructor', 'region', 'duration_hours']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre del curso'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Descripción del curso', 'rows': 4}),
-            'duration_hours': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 1000}),
-            'instructor': forms.Select(attrs={'class': 'form-select'}),
-            'region': forms.Select(attrs={'class': 'form-select'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'instructor': forms.Select(attrs={'class': 'form-control'}),
+            'region': forms.Select(attrs={'class': 'form-control'}),
+            'duration_hours': forms.NumberInput(attrs={'class': 'form-control'}),
         }
         labels = {
             'name': 'Nombre',
@@ -27,6 +31,24 @@ class CourseForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Fieldset(
+                'Información del Curso',
+                Row(
+                    Column('name', css_class='col-md-12'),
+                ),
+                Row(
+                    Column('instructor', css_class='col-md-4'),
+                    Column('region', css_class='col-md-4'),
+                    Column('duration_hours', css_class='col-md-4'),
+                ),
+                Row(
+                    Column('description', css_class='col-md-12'),
+                ),
+            ),
+        )
+        
         # Hacer que todos los campos tengan el estilo adecuado
         for field_name, field in self.fields.items():
             if field_name not in self.Meta.widgets:
@@ -36,15 +58,80 @@ class CourseForm(forms.ModelForm):
         for field_name in ['instructor', 'region']:
             if field_name in self.fields:
                 self.fields[field_name].widget.attrs['class'] = 'form-select'
+        
+        # Personalizar el queryset del campo instructor
+        if 'instructor' in self.fields:
+            self.fields['instructor'].queryset = Instructor.objects.all().order_by('name')
+            self.fields['instructor'].label_from_instance = lambda obj: f"{obj.name}"
 
 class SectionForm(forms.ModelForm):
-    """Formulario para crear/editar secciones informativas."""
+    """Formulario para crear/editar secciones."""
     
     class Meta:
         model = Section
-        fields = ['title', 'text', 'image', 'video_url', 'order']
+        fields = ['title', 'content', 'media', 'order']
         widgets = {
-            'text': forms.Textarea(attrs={'rows': 4}),
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Título de la sección'
+            }),
+            'content': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 5,
+                'placeholder': 'Contenido de la sección'
+            }),
+            'media': forms.FileInput(attrs={
+                'class': 'form-control'
+            }),
+            'order': forms.HiddenInput()
+        }
+        labels = {
+            'title': 'Título',
+            'content': 'Contenido',
+            'media': 'Medio (imagen, documento)',
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Fieldset(
+                'Información de la Sección',
+                Row(
+                    Column('title', css_class='col-md-12'),
+                ),
+                Row(
+                    Column('content', css_class='col-md-12'),
+                ),
+                Row(
+                    Column('media', css_class='col-md-12'),
+                ),
+            ),
+        )
+        
+        # Hacer que todos los campos tengan el estilo adecuado
+        for field_name, field in self.fields.items():
+            if field_name not in self.Meta.widgets:
+                field.widget.attrs['class'] = 'form-control'
+
+class AnswerForm(forms.ModelForm):
+    """Formulario para crear/editar respuestas."""
+    
+    class Meta:
+        model = Answer
+        fields = ['answer', 'is_correct']
+        widgets = {
+            'answer': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Escriba la respuesta aquí'
+            }),
+            'is_correct': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            })
+        }
+        labels = {
+            'answer': '',
+            'is_correct': 'Respuesta correcta',
         }
 
 class QuestionForm(forms.ModelForm):
@@ -52,20 +139,63 @@ class QuestionForm(forms.ModelForm):
     
     class Meta:
         model = Question
-        fields = ['number', 'text', 'media', 'type']
+        fields = ['text', 'type', 'order']
         widgets = {
-            'text': forms.Textarea(attrs={'rows': 3}),
+            'text': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Escriba la pregunta aquí'
+            }),
+            'type': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'order': forms.HiddenInput()
         }
-
-class AnswerForm(forms.ModelForm):
-    """Formulario para crear/editar respuestas."""
+        labels = {
+            'text': 'Pregunta',
+            'type': 'Tipo de pregunta',
+        }
     
-    class Meta:
-        model = Answer
-        fields = ['number', 'answer', 'media', 'is_correct']
-        widgets = {
-            'answer': forms.Textarea(attrs={'rows': 2}),
-        }
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Fieldset(
+                'Información de la Pregunta',
+                Row(
+                    Column('text', css_class='col-md-12'),
+                ),
+                Row(
+                    Column('type', css_class='col-md-6'),
+                ),
+            ),
+        )
+        
+        # Hacer que todos los campos tengan el estilo adecuado
+        for field_name, field in self.fields.items():
+            if field_name not in self.Meta.widgets:
+                field.widget.attrs['class'] = 'form-control'
+                
+        # Asegurarse de que los campos select tengan la clase correcta
+        if 'type' in self.fields:
+            self.fields['type'].widget.attrs['class'] = 'form-select'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        question_type = cleaned_data.get('type')
+        
+        if question_type == 'true_false':
+            # Asegurarse de que las preguntas verdadero/falso tengan exactamente dos respuestas
+            if hasattr(self.instance, 'answers'):
+                answers = self.instance.answers.all()
+                if answers.count() > 2:
+                    raise ValidationError('Las preguntas de verdadero/falso solo pueden tener dos respuestas.')
+                if answers.count() == 2:
+                    true_count = answers.filter(is_correct=True).count()
+                    if true_count != 1:
+                        raise ValidationError('Las preguntas de verdadero/falso deben tener exactamente una respuesta verdadera.')
+        
+        return cleaned_data
 
 class RegionForm(forms.ModelForm):
     """Formulario para crear/editar regiones."""

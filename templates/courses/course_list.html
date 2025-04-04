@@ -53,8 +53,8 @@
                         <span>{{ course.instructor|default:"No asignado" }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span><i class="fas fa-map-marker-alt me-2"></i> Regiones:</span>
-                        <span class="badge bg-secondary">{{ course.applications.all|length|default:0 }}</span>
+                        <span><i class="fas fa-map-marker-alt me-2"></i> Región:</span>
+                        <span class="badge bg-secondary">{{ course.region.nombre|default:"No asignada" }}</span>
                     </li>
                 </ul>
             </div>

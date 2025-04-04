@@ -39,10 +39,12 @@ class SectionAdmin(admin.ModelAdmin):
     list_filter = ['course']
     search_fields = ['title', 'text', 'course__name']
 
+@admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ['text', 'course', 'number', 'type']
-    list_filter = ['course', 'type']
-    search_fields = ['text', 'course__name']
+    list_display = ('text', 'type', 'order', 'course')
+    list_filter = ('type', 'course')
+    search_fields = ('text', 'course__name')
+    ordering = ('course', 'order')
 
 class DesempenoAdmin(admin.ModelAdmin):
     list_display = ['technician', 'course', 'puntuacion', 'fecha', 'estado']
@@ -52,7 +54,6 @@ class DesempenoAdmin(admin.ModelAdmin):
 # Registrar los modelos
 admin.site.register(Course, CourseAdmin)
 admin.site.register(Section, SectionAdmin)
-admin.site.register(Question, QuestionAdmin)
 admin.site.register(Answer)
 admin.site.register(Region, RegionAdmin)
 admin.site.register(Instructor, InstructorAdmin)

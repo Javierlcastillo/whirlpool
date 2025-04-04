@@ -124,7 +124,7 @@ class CourseDetailView(LoginRequiredMixin, DetailView):
 class CourseDeleteView(LoginRequiredMixin, DeleteView):
     model = Course
     template_name = 'courses/course_confirm_delete.html'
-    success_url = reverse_lazy('course-list')
+    success_url = reverse_lazy('courses:course-list')
     slug_field = 'slug'
     slug_url_kwarg = 'slug'
 
@@ -166,12 +166,12 @@ def complete_section(request, slug, section_id):
     enrollment = course.enrollments.filter(user=request.user).first()
     if not enrollment:
         messages.error(request, "Debes estar inscrito en el curso para completar secciones.")
-        return redirect('course-detail', slug=slug)
+        return redirect('courses:course-detail', slug=slug)
     
     # Marcar la sección como completada
     enrollment.completed_sections.add(section)
     messages.success(request, f"Sección '{section.title}' marcada como completada.")
-    return redirect('course-detail', slug=slug)
+    return redirect('courses:course-detail', slug=slug)
 
 @login_required
 def complete_question(request, slug, question_id):
@@ -183,12 +183,12 @@ def complete_question(request, slug, question_id):
     enrollment = course.enrollments.filter(user=request.user).first()
     if not enrollment:
         messages.error(request, "Debes estar inscrito en el curso para completar preguntas.")
-        return redirect('course-detail', slug=slug)
+        return redirect('courses:course-detail', slug=slug)
     
     # Marcar la pregunta como completada
     enrollment.completed_questions.add(question)
     messages.success(request, f"Pregunta completada correctamente.")
-    return redirect('course-detail', slug=slug)
+    return redirect('courses:course-detail', slug=slug)
 
 @login_required
 def course_progress(request, slug):
@@ -198,7 +198,7 @@ def course_progress(request, slug):
     
     if not enrollment:
         messages.error(request, "Debes estar inscrito en el curso para ver tu progreso.")
-        return redirect('course-detail', slug=slug)
+        return redirect('courses:course-detail', slug=slug)
     
     context = {
         'course': course,
@@ -216,12 +216,12 @@ def course_certificate(request, slug):
     
     if not enrollment:
         messages.error(request, "Debes estar inscrito en el curso para obtener el certificado.")
-        return redirect('course-detail', slug=slug)
+        return redirect('courses:course-detail', slug=slug)
     
     # Verificar si el curso está completado
     if not enrollment.is_completed:
         messages.warning(request, "Debes completar el curso para obtener el certificado.")
-        return redirect('course-detail', slug=slug)
+        return redirect('courses:course-detail', slug=slug)
     
     context = {
         'course': course,
@@ -232,100 +232,100 @@ def course_certificate(request, slug):
 
 @login_required
 def manage_course(request, slug=None):
-    """Vista unificada para crear/editar cursos con preguntas, respuestas y secciones."""
+    """Vista para crear o editar un curso."""
+    # Verificar si el usuario es superusuario
     if not request.user.is_superuser:
-        messages.error(request, "Acceso denegado. Solo administradores tienen permiso para acceder.")
-        return redirect('login')
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('dashboard')
     
-    # Obtener el curso si existe (edición) o crear uno nuevo
-    if slug:
-        course = get_object_or_404(Course, slug=slug)
-        template_title = f"Editar Curso: {course.name}"
-        is_new = False
-    else:
-        course = None
-        template_title = "Nuevo Curso"
-        is_new = True
-    
-    # Formsets para preguntas y secciones
+    # Definir los formsets
     QuestionFormSet = inlineformset_factory(
-        Course, Question, 
+        Course, Question,
         form=QuestionForm,
-        extra=1 if not is_new else 0, 
+        extra=1,
         can_delete=True,
-        fields=['number', 'text', 'media', 'type']
+        fields=['text', 'type', 'order'],
     )
     
     SectionFormSet = inlineformset_factory(
         Course, Section,
         form=SectionForm,
-        extra=1 if not is_new else 0, 
+        extra=1,
         can_delete=True,
-        fields=['title', 'text', 'image', 'video_url', 'order']
+        fields=['title', 'content', 'media', 'order'],
     )
     
+    course = None
+    if slug:
+        course = get_object_or_404(Course, slug=slug)
+    
     if request.method == 'POST':
-        course_form = CourseForm(request.POST, request.FILES, instance=course)
+        form = CourseForm(request.POST, instance=course)
+        question_formset = QuestionFormSet(request.POST, prefix='questions', instance=course)
+        section_formset = SectionFormSet(request.POST, request.FILES, prefix='sections', instance=course)
         
-        if course_form.is_valid():
-            # Guardar el curso primero
-            created_course = course_form.save(commit=False)
+        if form.is_valid() and question_formset.is_valid() and section_formset.is_valid():
+            # Guardar el curso
+            course = form.save(commit=False)
+            if not course.instructor:
+                course.instructor = request.user
+            course.save()
             
-            # Asegurar que esté ligado a una región
-            if not created_course.region and created_course.instructor and created_course.instructor.region:
-                created_course.region = created_course.instructor.region
+            # Guardar preguntas y sus respuestas
+            questions = question_formset.save(commit=False)
+            for i, question in enumerate(questions):
+                question.course = course
+                if f'questions-{i}-order' in request.POST:
+                    question.order = request.POST[f'questions-{i}-order']
+                question.save()
                 
-            created_course.save()
-            
-            # Si hay región, crear la aplicación del curso a esa región
-            if created_course.region:
-                CourseApplication.objects.get_or_create(
-                    course=created_course,
-                    region=created_course.region
-                )
-            
-            if is_new:
-                # Si es un curso nuevo, solo guardar el curso básico y redirigir
-                messages.success(request, "Curso creado exitosamente. Ahora puede agregar preguntas y secciones.")
-                return redirect('courses:course-update', slug=created_course.slug)
-            
-            # Procesar formsets solo para cursos existentes
-            question_formset = QuestionFormSet(request.POST, request.FILES, instance=created_course)
-            section_formset = SectionFormSet(request.POST, request.FILES, instance=created_course)
-            
-            formsets_valid = True
-            
-            if question_formset.is_bound and question_formset.is_valid():
-                question_formset.save()
-            else:
-                formsets_valid = False
+                # Procesar las respuestas
+                answers_data = request.POST.getlist(f'questions-{i}-answers')
+                is_correct_data = request.POST.getlist(f'questions-{i}-is_correct')
                 
-            if section_formset.is_bound and section_formset.is_valid():
-                section_formset.save()
-            else:
-                formsets_valid = False
-            
-            if formsets_valid:
-                messages.success(request, f'Curso actualizado exitosamente')
-                return redirect('courses:course-detail', slug=created_course.slug)
-            else:
-                messages.warning(request, 'El curso se ha guardado, pero hay errores en algunos campos. Por favor revise el formulario.')
+                # Eliminar respuestas existentes
+                if question.pk:
+                    question.answers.all().delete()
                 
-        else:
-            messages.error(request, 'Por favor corrija los errores en el formulario del curso')
+                # Crear nuevas respuestas
+                for j, (answer_text, is_correct) in enumerate(zip(answers_data, is_correct_data)):
+                    if answer_text.strip():  # Solo crear respuestas no vacías
+                        Answer.objects.create(
+                            question=question,
+                            course=course,
+                            answer=answer_text,
+                            is_correct=is_correct == 'on',
+                            number=j + 1
+                        )
             
+            # Procesar eliminaciones de preguntas
+            for obj in question_formset.deleted_objects:
+                obj.delete()
+            
+            # Guardar secciones
+            sections = section_formset.save(commit=False)
+            for i, section in enumerate(sections):
+                section.course = course
+                if f'sections-{i}-order' in request.POST:
+                    section.order = request.POST[f'sections-{i}-order']
+                section.save()
+            
+            # Procesar eliminaciones de secciones
+            for obj in section_formset.deleted_objects:
+                obj.delete()
+            
+            messages.success(request, 'Curso guardado exitosamente.')
+            return redirect('courses:course-detail', slug=course.slug)
     else:
-        # GET request
-        course_form = CourseForm(instance=course)
-        question_formset = QuestionFormSet(instance=course) if course else None
-        section_formset = SectionFormSet(instance=course) if course else None
+        form = CourseForm(instance=course)
+        question_formset = QuestionFormSet(prefix='questions', instance=course)
+        section_formset = SectionFormSet(prefix='sections', instance=course)
     
     context = {
-        'title': template_title,
-        'course_form': course_form,
+        'form': form,
         'question_formset': question_formset,
         'section_formset': section_formset,
-        'is_new': is_new,
+        'course': course,
     }
     
     return render(request, 'courses/manage_course.html', context)
@@ -478,7 +478,7 @@ def add_region_to_course(request, slug):
         else:
             messages.error(request, 'Debe seleccionar una región válida.')
     
-    return redirect('course-detail', slug=slug)
+    return redirect('courses:course-detail', slug=slug)
 
 @login_required
 def remove_region_from_course(request, slug, region_id):
@@ -497,4 +497,4 @@ def remove_region_from_course(request, slug, region_id):
     except CourseApplication.DoesNotExist:
         messages.error(request, 'La región no está asociada a este curso.')
     
-    return redirect('course-detail', slug=slug)
+    return redirect('courses:course-detail', slug=slug)

@@ -4,6 +4,14 @@ from django.db import models
 from django.urls import reverse
 from django.utils.text import slugify
 from django.utils import timezone
+from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
+from django.db.models import Q
+from django.utils.translation import gettext_lazy as _
+import json
+
+User = get_user_model()
 
 class Region(models.Model):
     """Modelo para regiones."""
@@ -48,16 +56,16 @@ class Course(models.Model):
     slug = models.SlugField(max_length=250, unique=True, blank=True)
     description = models.TextField(verbose_name='Descripción', blank=True)
     instructor = models.ForeignKey(
-        Instructor, 
+        'Instructor', 
         on_delete=models.SET_NULL, 
         null=True, 
         blank=True,
-        related_name='courses_teaching',
+        related_name='courses_taught',
         verbose_name='Instructor'
     )
-    duration_hours = models.PositiveSmallIntegerField(verbose_name='Duración (horas)', default=8)
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='Última actualización')
+    duration_hours = models.PositiveIntegerField(verbose_name='Duración (horas)', default=8)
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='Fecha de creación')
+    updated_at = models.DateTimeField(default=timezone.now, verbose_name='Última actualización')
     region = models.ForeignKey(
         Region,
         on_delete=models.SET_NULL,
@@ -66,6 +74,7 @@ class Course(models.Model):
         related_name='courses',
         verbose_name='Región Principal'
     )
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = 'Curso'
@@ -93,6 +102,7 @@ class Course(models.Model):
             else:
                 self.slug = base_slug
                 
+        self.updated_at = timezone.now()
         super().save(*args, **kwargs)
     
     def get_absolute_url(self):
@@ -122,76 +132,80 @@ class CourseApplication(models.Model):
         return f"{self.course} - {self.region}"
 
 class Section(models.Model):
-    """Modelo para secciones informativas dentro de un curso."""
-    id = models.AutoField(primary_key=True)
-    course = models.ForeignKey(
-        Course,
-        on_delete=models.CASCADE,
-        related_name='sections',
-        verbose_name='Curso'
-    )
-    title = models.CharField(max_length=255, verbose_name='Título')
-    text = models.TextField(verbose_name='Texto', blank=True)
-    image = models.ImageField(
+    """Modelo para secciones de cursos."""
+    
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sections')
+    title = models.CharField(max_length=200, verbose_name='Título')
+    content = models.TextField(verbose_name='Contenido')
+    media = models.FileField(
         upload_to='sections/',
         blank=True,
         null=True,
-        verbose_name='Imagen'
+        verbose_name='Medio (imagen, documento)'
     )
-    video_url = models.URLField(
-        max_length=255,
-        blank=True,
-        null=True,
-        verbose_name='URL de video'
-    )
-    order = models.PositiveSmallIntegerField(default=0, verbose_name='Orden')
+    order = models.PositiveIntegerField(default=0, verbose_name='Orden')
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(default=timezone.now)
     
     class Meta:
+        ordering = ['order']
         verbose_name = 'Sección'
         verbose_name_plural = 'Secciones'
-        ordering = ['course', 'order']
     
     def __str__(self):
-        return f"{self.course.name} - Sección: {self.title}"
+        return f"{self.title}"
+    
+    def save(self, *args, **kwargs):
+        if not self.pk:  # Si es una nueva sección
+            # Obtener el último orden y sumar 1
+            last_order = Section.objects.filter(course=self.course).order_by('-order').first()
+            self.order = (last_order.order + 1) if last_order else 0
+        self.updated_at = timezone.now()
+        super().save(*args, **kwargs)
 
 class Question(models.Model):
-    """Modelo para preguntas de los cursos."""
-    TYPE_CHOICES = [
-        ('multiple', 'Opción Múltiple'),
-        ('open', 'Respuesta Abierta'),
-        ('true_false', 'Verdadero/Falso'),
-    ]
+    """Modelo para preguntas de cursos."""
     
-    id = models.AutoField(primary_key=True)
-    course = models.ForeignKey(
-        Course, 
-        on_delete=models.CASCADE,
-        related_name='questions',
-        verbose_name='Curso'
+    QUESTION_TYPES = (
+        ('multiple_choice', 'Opción Múltiple'),
+        ('true_false', 'Verdadero/Falso'),
     )
-    number = models.PositiveIntegerField(verbose_name='Número', default=1)
+    
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='questions')
     text = models.TextField(verbose_name='Texto de la pregunta')
-    media = models.FileField(
-        upload_to='questions/',
-        blank=True,
-        null=True,
-        verbose_name='Medio (imagen, video)'
-    )
-    type = models.CharField(
-        max_length=20,
-        choices=TYPE_CHOICES,
-        default='multiple',
-        verbose_name='Tipo'
-    )
+    type = models.CharField(max_length=20, choices=QUESTION_TYPES, default='multiple_choice', verbose_name='Tipo de pregunta')
+    order = models.PositiveIntegerField(default=0, verbose_name='Orden')
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(default=timezone.now)
     
     class Meta:
+        ordering = ['order']
         verbose_name = 'Pregunta'
         verbose_name_plural = 'Preguntas'
-        ordering = ['course', 'number']
-        unique_together = ['course', 'number']
     
     def __str__(self):
-        return f"{self.course.name} - Pregunta {self.number}"
+        return f"{self.text[:50]}..."
+    
+    def clean(self):
+        super().clean()
+        if self.type == 'true_false':
+            # Verificar que solo tenga dos respuestas para verdadero/falso
+            answers = self.answers.all()
+            if answers.count() > 2:
+                raise ValidationError('Las preguntas de verdadero/falso solo pueden tener dos respuestas.')
+            if answers.count() == 2:
+                # Verificar que una sea verdadera y otra falsa
+                true_count = answers.filter(is_correct=True).count()
+                if true_count != 1:
+                    raise ValidationError('Las preguntas de verdadero/falso deben tener exactamente una respuesta verdadera y una falsa.')
+    
+    def save(self, *args, **kwargs):
+        if not self.pk:  # Si es una nueva pregunta
+            # Obtener el último orden y sumar 1
+            last_order = Question.objects.filter(course=self.course).order_by('-order').first()
+            self.order = (last_order.order + 1) if last_order else 0
+        self.updated_at = timezone.now()
+        super().save(*args, **kwargs)
 
 class Answer(models.Model):
     """Modelo para respuestas a las preguntas."""
@@ -217,6 +231,8 @@ class Answer(models.Model):
         verbose_name='Medio (imagen, video)'
     )
     is_correct = models.BooleanField(default=False, verbose_name='Es correcta')
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='Fecha de creación')
+    updated_at = models.DateTimeField(default=timezone.now, verbose_name='Última actualización')
     
     class Meta:
         verbose_name = 'Respuesta'
@@ -225,6 +241,10 @@ class Answer(models.Model):
     
     def __str__(self):
         return f"Respuesta {self.number} para {self.question}"
+
+    def save(self, *args, **kwargs):
+        self.updated_at = timezone.now()
+        super().save(*args, **kwargs)
 
 class Desempeno(models.Model):
     """Modelo para registrar el desempeño de los técnicos en los cursos."""
@@ -270,3 +290,49 @@ class Desempeno(models.Model):
     
     def __str__(self):
         return f"{self.technician} - {self.course}"
+
+class UserCourseProgress(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='course_progress')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='user_progress')
+    completed_sections = models.ManyToManyField(Section, blank=True)
+    score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    is_completed = models.BooleanField(default=False)
+    last_accessed = models.DateTimeField(default=timezone.now, verbose_name='Última vez accedido')
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='Fecha de creación')
+
+    class Meta:
+        unique_together = ['user', 'course']
+        ordering = ['-last_accessed']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.course.name}"
+
+    def update_progress(self):
+        total_sections = self.course.sections.count()
+        completed_count = self.completed_sections.count()
+        if total_sections > 0:
+            self.score = (completed_count / total_sections) * 100
+            self.is_completed = self.score >= 100
+            self.save()
+
+class UserAnswer(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='answers')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='user_answers')
+    answer = models.TextField()
+    is_correct = models.BooleanField(default=False)
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='Fecha de creación')
+
+    class Meta:
+        unique_together = ['user', 'question']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.question.text[:50]}..."
+
+    def save(self, *args, **kwargs):
+        if self.question.type == 'multiple':
+            correct_answers = self.question.answers.filter(is_correct=True)
+            self.is_correct = any(self.answer == ca.answer for ca in correct_answers)
+        elif self.question.type == 'true_false':
+            self.is_correct = self.answer.lower() in ['true', 'verdadero', '1']
+        super().save(*args, **kwargs)
