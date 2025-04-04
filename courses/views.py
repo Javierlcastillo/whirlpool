@@ -238,137 +238,26 @@ def manage_course(request, slug=None):
         messages.error(request, "No tienes permiso para acceder a esta página.")
         return redirect('dashboard')
     
-    # Definir los formsets con más flexibilidad
-    QuestionFormSet = inlineformset_factory(
-        Course, Question,
-        form=QuestionForm,
-        extra=1,
-        can_delete=True,
-        fields=['text', 'type', 'order'],
-    )
+    # Si es una solicitud GET, redirigir a la vista de edición básica
+    if request.method == 'GET':
+        if slug:
+            return redirect('courses:course-edit', slug=slug)
+        else:
+            return redirect('courses:course-create')
     
-    SectionFormSet = inlineformset_factory(
-        Course, Section,
-        form=SectionForm,
-        extra=1,
-        can_delete=True,
-        fields=['title', 'content', 'media', 'order'],
-    )
-    
+    # Si es una solicitud POST, procesar el formulario
     course = None
     if slug:
         course = get_object_or_404(Course, slug=slug)
     
-    if request.method == 'POST':
-        # Imprimir datos para debug
-        print("POST DATA:", request.POST)
-        
-        form = CourseForm(request.POST, instance=course)
-        
-        if form.is_valid():
-            # Guardar el curso primero para asegurarnos de que tenga ID
-            course = form.save()
-            
-            # Procesar formset de preguntas
-            question_formset = QuestionFormSet(request.POST, instance=course, prefix='questions')
-            
-            if question_formset.is_valid():
-                print("Question formset is valid")
-                # Guardar preguntas sin comprometer aún
-                questions = question_formset.save(commit=False)
-                
-                # Procesar cada pregunta
-                for i, question in enumerate(questions):
-                    question.course = course
-                    question.save()  # Guardar la pregunta para que tenga un ID
-                    
-                    print(f"Saved question {i}: {question.id}")
-                    
-                    # Procesar las respuestas para esta pregunta
-                    answer_keys = [k for k in request.POST.keys() if k.startswith(f'questions-{i}-answers')]
-                    
-                    # Solo si hay respuestas para esta pregunta
-                    if answer_keys:
-                        # Primero eliminar respuestas existentes
-                        Answer.objects.filter(question=question).delete()
-                        
-                        # Obtener datos de respuestas
-                        answers_data = request.POST.getlist(f'questions-{i}-answers')
-                        # A veces el checkbox no viene en el request si no está marcado
-                        is_correct_data = []
-                        for j in range(len(answers_data)):
-                            key = f'questions-{i}-is_correct-{j}'
-                            is_correct = key in request.POST or request.POST.get(f'questions-{i}-is_correct') == f'{j}'
-                            is_correct_data.append('on' if is_correct else '')
-                        
-                        # Crear respuestas nuevas
-                        for j, (answer_text, is_correct) in enumerate(zip(answers_data, is_correct_data)):
-                            if answer_text.strip():  # Solo crear respuestas no vacías
-                                Answer.objects.create(
-                                    question=question,
-                                    course=course,
-                                    answer=answer_text,
-                                    is_correct=is_correct == 'on',
-                                    number=j + 1
-                                )
-                                print(f"Created answer {j+1} for question {question.id}")
-                
-                # Procesar eliminaciones de preguntas
-                for obj in question_formset.deleted_objects:
-                    print(f"Deleting question: {obj.id}")
-                    obj.delete()
-                
-                # Procesar formset de secciones
-                section_formset = SectionFormSet(request.POST, request.FILES, instance=course, prefix='sections')
-                
-                if section_formset.is_valid():
-                    print("Section formset is valid")
-                    # Guardar secciones
-                    sections = section_formset.save(commit=False)
-                    
-                    for i, section in enumerate(sections):
-                        section.course = course
-                        section.save()
-                        print(f"Saved section {i}: {section.id}")
-                    
-                    # Procesar eliminaciones de secciones
-                    for obj in section_formset.deleted_objects:
-                        print(f"Deleting section: {obj.id}")
-                        obj.delete()
-                    
-                    # Guardar formsets
-                    question_formset.save_m2m()
-                    section_formset.save_m2m()
-                    
-                    messages.success(request, 'Curso guardado exitosamente.')
-                    return redirect('courses:course-detail', slug=course.slug)
-                else:
-                    print("Section formset errors:", section_formset.errors)
-                    messages.error(request, 'Error al procesar las secciones.')
-            else:
-                print("Question formset errors:", question_formset.errors)
-                messages.error(request, 'Error al procesar las preguntas.')
-        else:
-            print("Form errors:", form.errors)
-            messages.error(request, 'Error al procesar el formulario del curso.')
-            
-        # Si llegamos aquí, algo falló
-        # Recreamos los formsets para la renderización
-        question_formset = QuestionFormSet(request.POST, instance=course, prefix='questions')
-        section_formset = SectionFormSet(request.POST, request.FILES, instance=course, prefix='sections')
+    form = CourseForm(request.POST, instance=course)
+    if form.is_valid():
+        course = form.save()
+        messages.success(request, 'Información básica del curso guardada exitosamente.')
+        return redirect('courses:course-edit-sections', slug=course.slug)
     else:
-        form = CourseForm(instance=course)
-        question_formset = QuestionFormSet(instance=course, prefix='questions')
-        section_formset = SectionFormSet(instance=course, prefix='sections')
-    
-    context = {
-        'form': form,
-        'question_formset': question_formset,
-        'section_formset': section_formset,
-        'course': course,
-    }
-    
-    return render(request, 'courses/manage_course.html', context)
+        messages.error(request, 'Error al guardar la información del curso.')
+        return redirect('courses:course-edit', slug=slug) if slug else redirect('courses:course-create')
 
 # Region Views
 class RegionListView(LoginRequiredMixin, ListView):
@@ -538,3 +427,264 @@ def remove_region_from_course(request, slug, region_id):
         messages.error(request, 'La región no está asociada a este curso.')
     
     return redirect('courses:course-detail', slug=slug)
+
+@login_required
+def course_base_edit(request, slug=None):
+    """Vista para editar información básica del curso."""
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('dashboard')
+    
+    course = None
+    if slug:
+        course = get_object_or_404(Course, slug=slug)
+    
+    if request.method == 'POST':
+        form = CourseForm(request.POST, instance=course)
+        if form.is_valid():
+            course = form.save()
+            messages.success(request, 'Información del curso guardada exitosamente.')
+            return redirect('courses:course-edit-sections', slug=course.slug)
+        else:
+            messages.error(request, 'Error al guardar la información del curso.')
+    else:
+        form = CourseForm(instance=course)
+    
+    context = {
+        'form': form,
+        'course': course,
+        'is_new': course is None
+    }
+    return render(request, 'courses/course_edit_basic.html', context)
+
+@login_required
+def course_sections_edit(request, slug):
+    """Vista para gestionar las secciones del curso."""
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('dashboard')
+    
+    course = get_object_or_404(Course, slug=slug)
+    sections = Section.objects.filter(course=course).order_by('order')
+    
+    context = {
+        'course': course,
+        'sections': sections
+    }
+    return render(request, 'courses/course_edit_sections.html', context)
+
+@login_required
+def course_section_add(request, slug):
+    """Vista para añadir una sección al curso."""
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('dashboard')
+    
+    course = get_object_or_404(Course, slug=slug)
+    
+    if request.method == 'POST':
+        form = SectionForm(request.POST, request.FILES)
+        if form.is_valid():
+            section = form.save(commit=False)
+            section.course = course
+            # Obtener el último orden y sumar 1
+            last_order = Section.objects.filter(course=course).order_by('-order').first()
+            section.order = (last_order.order + 1) if last_order else 0
+            section.save()
+            messages.success(request, 'Sección añadida exitosamente.')
+            return redirect('courses:course-edit-sections', slug=course.slug)
+        else:
+            messages.error(request, 'Error al crear la sección.')
+    else:
+        form = SectionForm()
+    
+    context = {
+        'form': form,
+        'course': course
+    }
+    return render(request, 'courses/course_section_form.html', context)
+
+@login_required
+def course_section_edit(request, slug, section_id):
+    """Vista para editar una sección del curso."""
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('dashboard')
+    
+    course = get_object_or_404(Course, slug=slug)
+    section = get_object_or_404(Section, id=section_id, course=course)
+    
+    if request.method == 'POST':
+        form = SectionForm(request.POST, request.FILES, instance=section)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Sección actualizada exitosamente.')
+            return redirect('courses:course-edit-sections', slug=course.slug)
+        else:
+            messages.error(request, 'Error al actualizar la sección.')
+    else:
+        form = SectionForm(instance=section)
+    
+    context = {
+        'form': form,
+        'course': course,
+        'section': section
+    }
+    return render(request, 'courses/course_section_form.html', context)
+
+@login_required
+def course_section_delete(request, slug, section_id):
+    """Vista para eliminar una sección del curso."""
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('dashboard')
+    
+    course = get_object_or_404(Course, slug=slug)
+    section = get_object_or_404(Section, id=section_id, course=course)
+    
+    if request.method == 'POST':
+        section.delete()
+        messages.success(request, 'Sección eliminada exitosamente.')
+        return redirect('courses:course-edit-sections', slug=course.slug)
+    
+    context = {
+        'course': course,
+        'section': section
+    }
+    return render(request, 'courses/course_section_confirm_delete.html', context)
+
+@login_required
+def course_questions_edit(request, slug):
+    """Vista para gestionar las preguntas del curso."""
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('dashboard')
+    
+    course = get_object_or_404(Course, slug=slug)
+    questions = Question.objects.filter(course=course).order_by('order')
+    
+    context = {
+        'course': course,
+        'questions': questions
+    }
+    return render(request, 'courses/course_edit_questions.html', context)
+
+@login_required
+def course_question_add(request, slug):
+    """Vista para añadir una pregunta al curso."""
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('dashboard')
+    
+    course = get_object_or_404(Course, slug=slug)
+    
+    if request.method == 'POST':
+        form = QuestionForm(request.POST)
+        if form.is_valid():
+            # Guardar la pregunta primero
+            question = form.save(commit=False)
+            question.course = course
+            question.save()
+            
+            # Procesar las respuestas
+            answers = request.POST.getlist('answers')
+            is_correct = request.POST.getlist('is_correct')
+            
+            # Crear las respuestas
+            for i, answer_text in enumerate(answers):
+                if answer_text.strip():  # Solo crear respuestas no vacías
+                    Answer.objects.create(
+                        question=question,
+                        course=course,
+                        answer=answer_text,
+                        is_correct=str(i) in is_correct,
+                        number=i + 1
+                    )
+            
+            messages.success(request, 'Pregunta agregada exitosamente.')
+            return redirect('courses:course-edit-questions', slug=course.slug)
+        else:
+            messages.error(request, 'Error al guardar la pregunta.')
+    else:
+        form = QuestionForm()
+    
+    context = {
+        'form': form,
+        'course': course,
+        'answers': None,  # No hay respuestas para una nueva pregunta
+    }
+    
+    return render(request, 'courses/course_question_form.html', context)
+
+@login_required
+def course_question_edit(request, slug, question_id):
+    """Vista para editar una pregunta del curso."""
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('dashboard')
+    
+    course = get_object_or_404(Course, slug=slug)
+    question = get_object_or_404(Question, id=question_id, course=course)
+    answers = Answer.objects.filter(question=question).order_by('number')
+    
+    if request.method == 'POST':
+        form = QuestionForm(request.POST, instance=question)
+        if form.is_valid():
+            form.save()
+            
+            # Eliminar respuestas existentes
+            Answer.objects.filter(question=question).delete()
+            
+            # Procesar nuevas respuestas
+            answers_data = request.POST.getlist('answers')
+            is_correct_data = request.POST.getlist('is_correct')
+            
+            for i, answer_text in enumerate(answers_data):
+                if answer_text.strip():  # Solo crear respuestas no vacías
+                    is_correct = str(i) in is_correct_data
+                    Answer.objects.create(
+                        question=question,
+                        course=course,
+                        answer=answer_text,
+                        is_correct=is_correct,
+                        number=i + 1
+                    )
+            
+            messages.success(request, 'Pregunta actualizada exitosamente.')
+            return redirect('courses:course-edit-questions', slug=course.slug)
+        else:
+            messages.error(request, 'Error al actualizar la pregunta.')
+    else:
+        form = QuestionForm(instance=question)
+    
+    context = {
+        'form': form,
+        'course': course,
+        'question': question,
+        'answers': answers
+    }
+    return render(request, 'courses/course_question_form.html', context)
+
+@login_required
+def course_question_delete(request, slug, question_id):
+    """Vista para eliminar una pregunta del curso."""
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta página.")
+        return redirect('dashboard')
+    
+    course = get_object_or_404(Course, slug=slug)
+    question = get_object_or_404(Question, id=question_id, course=course)
+    
+    if request.method == 'POST':
+        # Eliminar respuestas asociadas
+        Answer.objects.filter(question=question).delete()
+        # Eliminar la pregunta
+        question.delete()
+        messages.success(request, 'Pregunta eliminada exitosamente.')
+        return redirect('courses:course-edit-questions', slug=course.slug)
+    
+    context = {
+        'course': course,
+        'question': question
+    }
+    return render(request, 'courses/course_question_confirm_delete.html', context)

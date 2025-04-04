@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Eliminar Sección - {{ course.name }} - Whirlpool Capacitación{% endblock %}
+
+{% block header_title %}Eliminar Sección{% endblock %}
+{% block header_subtitle %}<p class="lead">Curso: {{ course.name }}</p>{% endblock %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header bg-danger text-white">
+        <h4 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i> Confirmar Eliminación</h4>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-warning">
+            <p><strong>¿Está seguro de que desea eliminar la sección "{{ section.title }}"?</strong></p>
+            <p>Esta acción no se puede deshacer.</p>
+        </div>
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash me-1"></i> Sí, Eliminar Sección
+                </button>
+                <a href="{% url 'courses:course-edit-sections' course.slug %}" class="btn btn-secondary ms-2">
+                    <i class="fas fa-times me-1"></i> Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ question|yesno:"Editar,Nueva" }} Pregunta - {{ course.name }} - Whirlpool Capacitación{% endblock %}
+
+{% block header_title %}{{ question|yesno:"Editar,Nueva" }} Pregunta{% endblock %}
+{% block header_subtitle %}<p class="lead">Curso: {{ course.name }}</p>{% endblock %}
+
+{% block extrahead %}
+<style>
+    .answer-item {
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 10px;
+        position: relative;
+    }
+    
+    .answer-item.correct {
+        border-color: #28a745;
+        background-color: rgba(40, 167, 69, 0.1);
+    }
+    
+    .answer-item input[type="text"] {
+        width: 100%;
+    }
+    
+    .answer-item .form-check {
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header bg-white">
+        <h4 class="mb-0"><i class="fas fa-question-circle me-2"></i> Información de la Pregunta</h4>
+    </div>
+    <div class="card-body">
+        <form method="post" id="question-form">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-12">
+                    {{ form.text|as_crispy_field }}
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    {{ form.type|as_crispy_field }}
+                </div>
+            </div>
+            
+            <h5 class="border-bottom pb-2 mb-3">Respuestas</h5>
+            <div id="answers-container">
+                {% if question.type == 'true_false' %}
+                    <!-- Respuestas para verdadero/falso -->
+                    <div class="answer-item">
+                        <input type="text" name="answers" class="form-control" value="Verdadero" readonly>
+                        <div class="form-check">
+                            <input type="checkbox" name="is_correct" value="0" class="form-check-input" {% if answers.0.is_correct %}checked{% endif %}>
+                            <label class="form-check-label">Correcta</label>
+                        </div>
+                    </div>
+                    <div class="answer-item">
+                        <input type="text" name="answers" class="form-control" value="Falso" readonly>
+                        <div class="form-check">
+                            <input type="checkbox" name="is_correct" value="1" class="form-check-input" {% if answers.1.is_correct %}checked{% endif %}>
+                            <label class="form-check-label">Correcta</label>
+                        </div>
+                    </div>
+                {% else %}
+                    <!-- Respuestas para opción múltiple -->
+                    {% for i in "1234"|make_list %}
+                        <div class="answer-item">
+                            <input type="text" name="answers" class="form-control" 
+                                   placeholder="Respuesta {{ i }}" 
+                                   value="{% if answers %}{{ answers|get_item:forloop.counter0|get_item:'answer' }}{% endif %}"
+                                   required>
+                            <div class="form-check">
+                                <input type="checkbox" name="is_correct" value="{{ forloop.counter0 }}" 
+                                       class="form-check-input" 
+                                       {% if answers %}{% if answers|get_item:forloop.counter0|get_item:'is_correct' %}checked{% endif %}{% endif %}>
+                                <label class="form-check-label">Correcta</label>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i> Guardar Pregunta
+                </button>
+                <a href="{% url 'courses:course-edit-questions' course.slug %}" class="btn btn-secondary ms-2">
+                    <i class="fas fa-times me-1"></i> Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const questionType = document.getElementById('id_type');
+        const answersContainer = document.getElementById('answers-container');
+        const questionForm = document.getElementById('question-form');
+        
+        // Función para manejar cambios en el tipo de pregunta
+        function handleTypeChange() {
+            const type = questionType.value;
+            
+            if (type === 'true_false') {
+                answersContainer.innerHTML = `
+                    <div class="answer-item">
+                        <input type="text" name="answers" class="form-control" value="Verdadero" readonly>
+                        <div class="form-check">
+                            <input type="checkbox" name="is_correct" value="0" class="form-check-input">
+                            <label class="form-check-label">Correcta</label>
+                        </div>
+                    </div>
+                    <div class="answer-item">
+                        <input type="text" name="answers" class="form-control" value="Falso" readonly>
+                        <div class="form-check">
+                            <input type="checkbox" name="is_correct" value="1" class="form-check-input">
+                            <label class="form-check-label">Correcta</label>
+                        </div>
+                    </div>
+                `;
+            } else {
+                answersContainer.innerHTML = '';
+                for (let i = 1; i <= 4; i++) {
+                    answersContainer.insertAdjacentHTML('beforeend', `
+                        <div class="answer-item">
+                            <input type="text" name="answers" class="form-control" placeholder="Respuesta ${i}" required>
+                            <div class="form-check">
+                                <input type="checkbox" name="is_correct" value="${i-1}" class="form-check-input">
+                                <label class="form-check-label">Correcta</label>
+                            </div>
+                        </div>
+                    `);
+                }
+            }
+        }
+        
+        // Event listeners
+        questionType.addEventListener('change', handleTypeChange);
+        
+        // Validar el formulario antes de enviar
+        questionForm.addEventListener('submit', function(e) {
+            const type = questionType.value;
+            const answers = document.querySelectorAll('input[name="answers"]');
+            const correctAnswers = document.querySelectorAll('input[name="is_correct"]:checked');
+            
+            // Verificar que todas las respuestas estén completas
+            for (const answer of answers) {
+                if (!answer.value.trim()) {
+                    e.preventDefault();
+                    alert('Todas las respuestas deben estar completas.');
+                    return;
+                }
+            }
+            
+            // Verificar que haya al menos una respuesta correcta
+            if (correctAnswers.length === 0) {
+                e.preventDefault();
+                alert('Debe marcar al menos una respuesta como correcta.');
+                return;
+            }
+            
+            // Para preguntas de verdadero/falso, debe haber exactamente una respuesta correcta
+            if (type === 'true_false' && correctAnswers.length !== 1) {
+                e.preventDefault();
+                alert('Las preguntas de verdadero/falso deben tener exactamente una respuesta correcta.');
+                return;
+            }
+        });
+        
+        // Al iniciar, verificar el tipo de pregunta
+        handleTypeChange();
+    });
+</script>
+{% endblock %} 

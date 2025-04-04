@@ -11,7 +11,11 @@ from .views import (
     InstructorListView, InstructorDetailView, InstructorCreateView,
     InstructorUpdateView, InstructorDeleteView,
     # Course region management
-    add_region_to_course, remove_region_from_course
+    add_region_to_course, remove_region_from_course,
+    # New course management URLs
+    course_base_edit, course_sections_edit, course_section_add, course_section_edit,
+    course_section_delete, course_questions_edit, course_question_add, course_question_edit,
+    course_question_delete
 )
 
 app_name = 'courses'
@@ -33,7 +37,7 @@ urlpatterns = [
 
     # Course URLs
     path('', CourseListView.as_view(), name='course-list'),
-    path('create/', manage_course, name='course-create'),
+    path('create/', course_base_edit, name='course-create'),
     path('<slug:slug>/', CourseDetailView.as_view(), name='course-detail'),
     path('<slug:slug>/update/', manage_course, name='course-update'),
     path('<slug:slug>/enroll/', enroll_course, name='course-enroll'),
@@ -44,4 +48,15 @@ urlpatterns = [
     path('<slug:slug>/eliminar/', CourseDeleteView.as_view(), name='course-delete'),
     path('<slug:slug>/add-region/', add_region_to_course, name='course-add-region'),
     path('<slug:slug>/remove-region/<int:region_id>/', remove_region_from_course, name='course-remove-region'),
+
+    # New course management URLs
+    path('<slug:slug>/edit/', course_base_edit, name='course-edit'),
+    path('<slug:slug>/sections/', course_sections_edit, name='course-edit-sections'),
+    path('<slug:slug>/section/add/', course_section_add, name='course-section-add'),
+    path('<slug:slug>/section/<int:section_id>/edit/', course_section_edit, name='course-section-edit'),
+    path('<slug:slug>/section/<int:section_id>/delete/', course_section_delete, name='course-section-delete'),
+    path('<slug:slug>/questions/', course_questions_edit, name='course-edit-questions'),
+    path('<slug:slug>/question/add/', course_question_add, name='course-question-add'),
+    path('<slug:slug>/question/<int:question_id>/edit/', course_question_edit, name='course-question-edit'),
+    path('<slug:slug>/question/<int:question_id>/delete/', course_question_delete, name='course-question-delete'),
 ]

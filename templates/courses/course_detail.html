@@ -45,7 +45,7 @@
             <div class="card-footer d-flex justify-content-between align-items-center">
                 <span class="text-muted small">Creado: {{ course.created_at|date:"d/m/Y" }}</span>
                 <div>
-                    <a href="{% url 'courses:course-update' course.slug %}" class="btn btn-primary btn-sm">
+                    <a href="{% url 'courses:course-edit' course.slug %}" class="btn btn-primary btn-sm">
                         <i class="fas fa-edit me-1"></i> Editar
                     </a>
                     <a href="{% url 'courses:course-delete' course.slug %}" class="btn btn-danger btn-sm ms-1">
@@ -88,22 +88,18 @@
     </div>
     
     <div class="col-lg-8">
-        <!-- Pestañas para preguntas y secciones -->
+        <!-- Contenido del curso -->
         <div class="card shadow">
             <div class="card-header bg-white">
-                <ul class="nav nav-tabs card-header-tabs" id="courseContentTab" role="tablist">
+                <ul class="nav nav-tabs card-header-tabs" id="courseContentTabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="questions-tab" data-bs-toggle="tab" 
-                                data-bs-target="#questions-content" type="button" role="tab" 
-                                aria-controls="questions-content" aria-selected="true">
-                            <i class="fas fa-question-circle me-1"></i> Preguntas
+                        <button class="nav-link active" id="questions-tab" data-bs-toggle="tab" data-bs-target="#questions-content" type="button" role="tab" aria-controls="questions-content" aria-selected="true">
+                            <i class="fas fa-question-circle me-2"></i> Preguntas
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="sections-tab" data-bs-toggle="tab" 
-                                data-bs-target="#sections-content" type="button" role="tab" 
-                                aria-controls="sections-content" aria-selected="false">
-                            <i class="fas fa-file-alt me-1"></i> Secciones
+                        <button class="nav-link" id="sections-tab" data-bs-toggle="tab" data-bs-target="#sections-content" type="button" role="tab" aria-controls="sections-content" aria-selected="false">
+                            <i class="fas fa-file-alt me-2"></i> Secciones
                         </button>
                     </li>
                 </ul>
@@ -114,7 +110,7 @@
                     <div class="tab-pane fade show active" id="questions-content" role="tabpanel" aria-labelledby="questions-tab">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="mb-0">Preguntas del Curso</h5>
-                            <a href="{% url 'courses:course-update' course.slug %}" class="btn btn-primary btn-sm">
+                            <a href="{% url 'courses:course-edit-questions' course.slug %}" class="btn btn-primary btn-sm">
                                 <i class="fas fa-edit me-1"></i> Administrar Preguntas
                             </a>
                         </div>
@@ -123,47 +119,25 @@
                         <div class="accordion" id="accordionQuestions">
                             {% for question in questions %}
                             <div class="accordion-item mb-3 border">
-                                <h2 class="accordion-header" id="heading{{ question.id }}">
+                                <h2 class="accordion-header" id="questionHeading{{ question.id }}">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#collapse{{ question.id }}" aria-expanded="false" aria-controls="collapse{{ question.id }}">
-                                        <strong class="me-2">Pregunta {{ question.number }}:</strong> 
-                                        <span class="text-truncate">{{ question.text|truncatechars:120 }}</span>
+                                        data-bs-target="#questionCollapse{{ question.id }}" aria-expanded="false" aria-controls="questionCollapse{{ question.id }}">
+                                        <strong class="me-2">{{ question.order }}.</strong> 
+                                        <span>{{ question.text|truncatechars:100 }}</span>
                                     </button>
                                 </h2>
-                                <div id="collapse{{ question.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ question.id }}"
-                                    data-bs-parent="#accordionQuestions">
+                                <div id="questionCollapse{{ question.id }}" class="accordion-collapse collapse" aria-labelledby="questionHeading{{ question.id }}" data-bs-parent="#accordionQuestions">
                                     <div class="accordion-body">
                                         <p class="mb-3">{{ question.text }}</p>
-                                        
-                                        {% if question.media %}
-                                        <div class="mb-3">
-                                            <img src="{{ question.media.url }}" alt="Material de pregunta" class="img-fluid rounded">
-                                        </div>
-                                        {% endif %}
-                                        
-                                        <div class="mb-3">
-                                            <strong>Tipo:</strong> {{ question.get_type_display }}
-                                        </div>
-                                        
                                         <h6 class="border-bottom pb-2 mb-3">Respuestas</h6>
-                                        
-                                        {% if question.answers.all %}
-                                        <div class="list-group">
+                                        <ul class="list-group">
                                             {% for answer in question.answers.all %}
-                                            <div class="list-group-item list-group-item-action {% if answer.is_correct %}list-group-item-success{% endif %}">
-                                                <div class="d-flex w-100 justify-content-between">
-                                                    <h6 class="mb-1">{{ answer.answer }}</h6>
-                                                    <small>Respuesta {{ answer.number }}</small>
-                                                </div>
-                                                {% if answer.is_correct %}
-                                                <span class="badge bg-success">Correcta</span>
-                                                {% endif %}
-                                            </div>
+                                            <li class="list-group-item {% if answer.is_correct %}list-group-item-success{% endif %}">
+                                                {{ answer.answer }}
+                                                {% if answer.is_correct %}<span class="badge bg-success float-end">Correcta</span>{% endif %}
+                                            </li>
                                             {% endfor %}
-                                        </div>
-                                        {% else %}
-                                        <p class="text-muted">No hay respuestas registradas para esta pregunta.</p>
-                                        {% endif %}
+                                        </ul>
                                     </div>
                                 </div>
                             </div>
@@ -172,7 +146,7 @@
                         {% else %}
                         <div class="text-center py-5">
                             <p class="text-muted mb-3">Este curso no tiene preguntas asignadas.</p>
-                            <a href="{% url 'courses:course-update' course.slug %}" class="btn btn-primary">
+                            <a href="{% url 'courses:course-edit-questions' course.slug %}" class="btn btn-primary">
                                 <i class="fas fa-plus-circle me-1"></i> Agregar Preguntas
                             </a>
                         </div>
@@ -183,7 +157,7 @@
                     <div class="tab-pane fade" id="sections-content" role="tabpanel" aria-labelledby="sections-tab">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="mb-0">Secciones del Curso</h5>
-                            <a href="{% url 'courses:course-update' course.slug %}" class="btn btn-primary btn-sm">
+                            <a href="{% url 'courses:course-edit-sections' course.slug %}" class="btn btn-primary btn-sm">
                                 <i class="fas fa-edit me-1"></i> Administrar Secciones
                             </a>
                         </div>
@@ -199,26 +173,14 @@
                                         <span>{{ section.title }}</span>
                                     </button>
                                 </h2>
-                                <div id="sectionCollapse{{ section.id }}" class="accordion-collapse collapse" aria-labelledby="sectionHeading{{ section.id }}"
-                                    data-bs-parent="#accordionSections">
+                                <div id="sectionCollapse{{ section.id }}" class="accordion-collapse collapse" aria-labelledby="sectionHeading{{ section.id }}" data-bs-parent="#accordionSections">
                                     <div class="accordion-body">
-                                        {% if section.text %}
                                         <div class="mb-3">
-                                            {{ section.text|linebreaks }}
+                                            {{ section.content|safe }}
                                         </div>
-                                        {% endif %}
-                                        
-                                        {% if section.image %}
-                                        <div class="mb-3">
-                                            <img src="{{ section.image.url }}" alt="{{ section.title }}" class="img-fluid rounded">
-                                        </div>
-                                        {% endif %}
-                                        
-                                        {% if section.video_url %}
-                                        <div class="mb-3">
-                                            <div class="ratio ratio-16x9">
-                                                <iframe src="{{ section.video_url }}" allowfullscreen></iframe>
-                                            </div>
+                                        {% if section.media %}
+                                        <div class="text-center">
+                                            <img src="{{ section.media.url }}" alt="{{ section.title }}" class="img-fluid rounded">
                                         </div>
                                         {% endif %}
                                     </div>
@@ -229,7 +191,7 @@
                         {% else %}
                         <div class="text-center py-5">
                             <p class="text-muted mb-3">Este curso no tiene secciones asignadas.</p>
-                            <a href="{% url 'courses:course-update' course.slug %}" class="btn btn-primary">
+                            <a href="{% url 'courses:course-edit-sections' course.slug %}" class="btn btn-primary">
                                 <i class="fas fa-plus-circle me-1"></i> Agregar Secciones
                             </a>
                         </div>
@@ -255,7 +217,7 @@
                     <div class="mb-3">
                         <label for="region" class="form-label">Seleccione una región</label>
                         <select class="form-select" id="region" name="region" required>
-                            <option value="">Seleccione una región...</option>
+                            <option value="">Seleccione...</option>
                             {% for region in all_regions %}
                             <option value="{{ region.id }}">{{ region.nombre }}</option>
                             {% endfor %}
@@ -264,7 +226,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Agregar Región</button>
+                    <button type="submit" class="btn btn-primary">Agregar</button>
                 </div>
             </form>
         </div>
