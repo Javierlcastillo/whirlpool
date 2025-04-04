@@ -8,23 +8,19 @@
 
 {% block extrahead %}
 <style>
-    /* Mejorar apariencia de pestañas */
-    .nav-tabs .nav-link {
-        font-weight: 500;
-    }
-    
-    .nav-tabs .nav-link.active {
-        border-bottom: 3px solid #003087;
-    }
-    
     /* Estilo para tarjetas de preguntas y secciones */
     .content-card {
         transition: all 0.3s ease;
         margin-bottom: 1.5rem;
+        cursor: move;
     }
     
     .content-card:hover {
         box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.1);
+    }
+    
+    .content-card.dragging {
+        opacity: 0.5;
     }
     
     /* Estilo para respuestas */
@@ -75,15 +71,15 @@
         to { opacity: 1; transform: translateY(0); }
     }
     
-    /* Botones de orden */
-    .order-buttons {
-        display: flex;
-        gap: 0.5rem;
-        margin-left: auto;
+    /* Estilo para el área de arrastrar y soltar */
+    .sortable-ghost {
+        opacity: 0.4;
+        background-color: #f8f9fa;
     }
     
-    .order-buttons .btn {
-        padding: 0.25rem 0.5rem;
+    .sortable-chosen {
+        background-color: #fff;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
     }
 </style>
 {% endblock %}
@@ -283,68 +279,62 @@
             <input type="checkbox" class="form-check-input" name="questions-{index}-is_correct">
             <label class="form-check-label">Correcta</label>
         </div>
-        <button type="button" class="btn btn-sm btn-outline-danger remove-answer">
-            <i class="fas fa-times"></i>
-        </button>
     </div>
 </template>
 
 {% endblock %}
 
-{% block extrajs %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Script cargado correctamente');
-    
-    // Verificar que los elementos principales existen
     const contentContainer = document.getElementById('content-container');
-    console.log('Contenedor de contenido:', contentContainer);
-    
     const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    console.log('Modal de eliminación:', deleteModal);
-    
     let itemToDelete = null;
+    
+    // Inicializar Sortable para el contenedor principal
+    new Sortable(contentContainer, {
+        animation: 150,
+        handle: '.handle',
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onEnd: function(evt) {
+            updateOrders();
+        }
+    });
     
     // Función para actualizar los órdenes
     function updateOrders() {
-        console.log('Actualizando órdenes');
         const cards = document.querySelectorAll('.content-card');
-        console.log('Tarjetas encontradas:', cards.length);
         cards.forEach((card, index) => {
             card.dataset.order = index;
             const title = card.querySelector('.card-header h5');
             const type = card.dataset.type;
             const number = index + 1;
-            title.innerHTML = `${type === 'question' ? 'Pregunta' : 'Sección'} ${number}`;
+            title.innerHTML = `<i class="fas fa-grip-vertical me-2 handle"></i>${type === 'question' ? 'Pregunta' : 'Sección'} ${number}`;
         });
+    }
+    
+    // Función para obtener el índice de una pregunta
+    function getQuestionIndex(questionCard) {
+        const questionCards = document.querySelectorAll('.question-card');
+        return Array.from(questionCards).indexOf(questionCard);
     }
     
     // Función para agregar nueva pregunta
     function addNewQuestion() {
-        console.log('Agregando nueva pregunta');
         const questionCount = document.querySelectorAll('.question-card').length;
-        console.log('Número de preguntas actual:', questionCount);
-        
         const template = `
             <div class="content-card question-card fade-in" data-type="question" data-order="${document.querySelectorAll('.content-card').length}">
                 <div class="card">
                     <div class="card-header bg-light d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">
+                            <i class="fas fa-grip-vertical me-2 handle"></i>
                             Nueva Pregunta
                         </h5>
-                        <div class="d-flex align-items-center">
-                            <div class="order-buttons">
-                                <button type="button" class="btn btn-sm btn-outline-secondary move-up">
-                                    <i class="fas fa-arrow-up"></i>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary move-down">
-                                    <i class="fas fa-arrow-down"></i>
-                                </button>
-                            </div>
-                            <button type="button" class="btn btn-sm btn-outline-danger ms-2 delete-item" data-type="question">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger delete-item" data-type="question">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                     <div class="card-body">
                         <div class="form-group">
@@ -361,10 +351,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="mt-4">
                             <h6 class="border-bottom pb-2 mb-3">
                                 Respuestas
-                                <button type="button" class="btn btn-sm btn-outline-success float-end add-answer-btn" 
-                                        data-question-index="${questionCount}">
-                                    <i class="fas fa-plus-circle me-1"></i> Agregar Respuesta
-                                </button>
                             </h6>
                             <div class="answers-container" data-question-index="${questionCount}"></div>
                         </div>
@@ -376,38 +362,28 @@ document.addEventListener('DOMContentLoaded', function() {
         if (contentContainer) {
             contentContainer.insertAdjacentHTML('beforeend', template);
             updateOrders();
-            console.log('Nueva pregunta agregada correctamente');
-        } else {
-            console.error('No se pudo agregar la pregunta: contenedor no encontrado');
+            // Inicializar respuestas para opción múltiple
+            const answersContainer = document.querySelector(`.answers-container[data-question-index="${questionCount}"]`);
+            for (let i = 0; i < 4; i++) {
+                addNewAnswer(questionCount);
+            }
         }
     }
     
     // Función para agregar nueva sección
     function addNewSection() {
-        console.log('Agregando nueva sección');
         const sectionCount = document.querySelectorAll('.section-card').length;
-        console.log('Número de secciones actual:', sectionCount);
-        
         const template = `
             <div class="content-card section-card fade-in" data-type="section" data-order="${document.querySelectorAll('.content-card').length}">
                 <div class="card">
                     <div class="card-header bg-light d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">
+                            <i class="fas fa-grip-vertical me-2 handle"></i>
                             Nueva Sección
                         </h5>
-                        <div class="d-flex align-items-center">
-                            <div class="order-buttons">
-                                <button type="button" class="btn btn-sm btn-outline-secondary move-up">
-                                    <i class="fas fa-arrow-up"></i>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary move-down">
-                                    <i class="fas fa-arrow-down"></i>
-                                </button>
-                            </div>
-                            <button type="button" class="btn btn-sm btn-outline-danger ms-2 delete-item" data-type="section">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger delete-item" data-type="section">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                     <div class="card-body">
                         <div class="form-group">
@@ -430,173 +406,150 @@ document.addEventListener('DOMContentLoaded', function() {
         if (contentContainer) {
             contentContainer.insertAdjacentHTML('beforeend', template);
             updateOrders();
-            console.log('Nueva sección agregada correctamente');
-        } else {
-            console.error('No se pudo agregar la sección: contenedor no encontrado');
         }
     }
     
     // Función para agregar nueva respuesta
     function addNewAnswer(questionIndex) {
-        console.log('Agregando nueva respuesta para pregunta', questionIndex);
         const container = document.querySelector(`.answers-container[data-question-index="${questionIndex}"]`);
-        if (!container) {
-            console.error('No se encontró el contenedor de respuestas para la pregunta', questionIndex);
-            return;
-        }
+        if (!container) return;
+        
         const template = document.getElementById('answer-template').innerHTML;
         const newAnswer = template.replace(/{index}/g, questionIndex);
         container.insertAdjacentHTML('beforeend', newAnswer);
-        console.log('Nueva respuesta agregada correctamente');
     }
     
-    // Verificar y configurar los botones principales
-    console.log('Configurando botones principales...');
+    // Event Listeners
+    document.getElementById('add-question-btn').addEventListener('click', function(e) {
+        e.preventDefault();
+        addNewQuestion();
+    });
     
-    const addQuestionBtn = document.getElementById('add-question-btn');
-    console.log('Botón de agregar pregunta:', addQuestionBtn);
+    document.getElementById('add-section-btn').addEventListener('click', function(e) {
+        e.preventDefault();
+        addNewSection();
+    });
     
-    const addSectionBtn = document.getElementById('add-section-btn');
-    console.log('Botón de agregar sección:', addSectionBtn);
-    
-    if (addQuestionBtn) {
-        addQuestionBtn.addEventListener('click', function(e) {
-            console.log('Click en botón de agregar pregunta');
-            e.preventDefault();
-            addNewQuestion();
-        });
-    } else {
-        console.error('No se encontró el botón de agregar pregunta');
-    }
-    
-    if (addSectionBtn) {
-        addSectionBtn.addEventListener('click', function(e) {
-            console.log('Click en botón de agregar sección');
-            e.preventDefault();
-            addNewSection();
-        });
-    } else {
-        console.error('No se encontró el botón de agregar sección');
-    }
-    
-    // Delegación de eventos para los botones de respuesta
+    // Delegación de eventos
     document.addEventListener('click', function(e) {
-        console.log('Click detectado en:', e.target);
-        
-        if (e.target.matches('.add-answer-btn') || e.target.closest('.add-answer-btn')) {
-            const btn = e.target.matches('.add-answer-btn') ? e.target : e.target.closest('.add-answer-btn');
-            const questionIndex = btn.dataset.questionIndex;
-            console.log('Agregando respuesta para pregunta', questionIndex);
-            addNewAnswer(questionIndex);
-        }
-        
-        if (e.target.matches('.remove-answer') || e.target.closest('.remove-answer')) {
-            const btn = e.target.matches('.remove-answer') ? e.target : e.target.closest('.remove-answer');
-            console.log('Eliminando respuesta');
-            btn.closest('.answer-item').remove();
-        }
-        
         if (e.target.matches('.delete-item') || e.target.closest('.delete-item')) {
             const btn = e.target.matches('.delete-item') ? e.target : e.target.closest('.delete-item');
-            console.log('Solicitando eliminación de elemento');
             itemToDelete = btn.closest('.content-card');
             deleteModal.show();
-        }
-        
-        if (e.target.matches('.move-up') || e.target.closest('.move-up')) {
-            const btn = e.target.matches('.move-up') ? e.target : e.target.closest('.move-up');
-            const card = btn.closest('.content-card');
-            const prevCard = card.previousElementSibling;
-            console.log('Moviendo elemento hacia arriba');
-            if (prevCard) {
-                contentContainer.insertBefore(card, prevCard);
-                updateOrders();
-            }
-        }
-        
-        if (e.target.matches('.move-down') || e.target.closest('.move-down')) {
-            const btn = e.target.matches('.move-down') ? e.target : e.target.closest('.move-down');
-            const card = btn.closest('.content-card');
-            const nextCard = card.nextElementSibling;
-            console.log('Moviendo elemento hacia abajo');
-            if (nextCard) {
-                contentContainer.insertBefore(nextCard, card);
-                updateOrders();
-            }
         }
     });
     
     // Confirmar eliminación
-    const confirmDeleteBtn = document.getElementById('confirmDelete');
-    if (confirmDeleteBtn) {
-        confirmDeleteBtn.addEventListener('click', function() {
-            console.log('Confirmando eliminación');
-            if (itemToDelete) {
-                itemToDelete.remove();
-                updateOrders();
-                deleteModal.hide();
-                itemToDelete = null;
-            }
-        });
-    } else {
-        console.error('No se encontró el botón de confirmar eliminación');
-    }
+    document.getElementById('confirmDelete').addEventListener('click', function() {
+        if (itemToDelete) {
+            itemToDelete.remove();
+            updateOrders();
+            deleteModal.hide();
+            itemToDelete = null;
+        }
+    });
     
     // Manejar cambios en el tipo de pregunta
     document.addEventListener('change', function(e) {
         if (e.target.name && e.target.name.endsWith('-type')) {
-            console.log('Cambio de tipo de pregunta detectado');
             const questionCard = e.target.closest('.question-card');
             const answersContainer = questionCard.querySelector('.answers-container');
-            const addAnswerBtn = questionCard.querySelector('.add-answer-btn');
+            const questionIndex = getQuestionIndex(questionCard);
+            
+            // Actualizar el data-question-index del contenedor de respuestas
+            answersContainer.dataset.questionIndex = questionIndex;
             
             if (e.target.value === 'true_false') {
-                console.log('Configurando pregunta como verdadero/falso');
                 answersContainer.innerHTML = '';
-                const questionIndex = addAnswerBtn.dataset.questionIndex;
                 
+                // Agregar "Verdadero"
                 addNewAnswer(questionIndex);
                 const trueInput = answersContainer.lastElementChild.querySelector('input[type="text"]');
                 trueInput.value = 'Verdadero';
                 
+                // Agregar "Falso"
                 addNewAnswer(questionIndex);
                 const falseInput = answersContainer.lastElementChild.querySelector('input[type="text"]');
                 falseInput.value = 'Falso';
-                
-                addAnswerBtn.disabled = true;
             } else {
-                console.log('Configurando pregunta como opción múltiple');
-                addAnswerBtn.disabled = false;
+                answersContainer.innerHTML = '';
+                // Agregar 4 respuestas para opción múltiple
+                for (let i = 0; i < 4; i++) {
+                    addNewAnswer(questionIndex);
+                }
             }
         }
     });
     
     // Manejar el envío del formulario
-    const courseForm = document.getElementById('course-form');
-    if (courseForm) {
-        courseForm.addEventListener('submit', function(e) {
-            console.log('Preparando envío del formulario');
-            const questions = document.querySelectorAll('.question-card');
-            questions.forEach((question, index) => {
-                const orderInput = document.createElement('input');
-                orderInput.type = 'hidden';
-                orderInput.name = `questions-${index}-order`;
-                orderInput.value = question.dataset.order;
-                question.appendChild(orderInput);
-            });
-            
-            const sections = document.querySelectorAll('.section-card');
-            sections.forEach((section, index) => {
-                const orderInput = document.createElement('input');
-                orderInput.type = 'hidden';
-                orderInput.name = `sections-${index}-order`;
-                orderInput.value = section.dataset.order;
-                section.appendChild(orderInput);
-            });
+    document.getElementById('course-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        console.log('Iniciando envío del formulario...');
+        
+        // Preparar los datos del formulario
+        const formData = new FormData(this);
+        
+        // Agregar los campos de orden
+        const questions = document.querySelectorAll('.question-card');
+        questions.forEach((question, index) => {
+            formData.append(`questions-${index}-order`, question.dataset.order);
         });
-    } else {
-        console.error('No se encontró el formulario del curso');
-    }
+        
+        const sections = document.querySelectorAll('.section-card');
+        sections.forEach((section, index) => {
+            formData.append(`sections-${index}-order`, section.dataset.order);
+        });
+        
+        // Log de los datos que se enviarán
+        console.log('Datos del formulario:');
+        for (let pair of formData.entries()) {
+            console.log(pair[0] + ': ' + pair[1]);
+        }
+        
+        // Obtener la URL y el método del formulario
+        const url = this.action;
+        console.log('URL de envío:', url);
+        
+        // Enviar el formulario
+        fetch(url, {
+            method: 'PUT', // Cambiar a PUT para actualización
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-HTTP-Method-Override': 'PUT' // Para compatibilidad con algunos servidores
+            }
+        })
+        .then(response => {
+            console.log('Respuesta recibida:', response);
+            const contentType = response.headers.get('content-type');
+            console.log('Tipo de contenido:', contentType);
+            
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                console.log('Redirigiendo a:', response.url);
+                window.location.href = response.url;
+                return Promise.reject('HTML response received');
+            }
+        })
+        .then(data => {
+            console.log('Datos recibidos:', data);
+            if (data.success) {
+                console.log('Redirigiendo a la lista de cursos...');
+                window.location.href = "{% url 'courses:course-list' %}";
+            } else {
+                console.error('Error del servidor:', data.message);
+                alert('Error al guardar los cambios: ' + data.message);
+            }
+        })
+        .catch(error => {
+            if (error !== 'HTML response received') {
+                console.error('Error en la petición:', error);
+                alert('Error al guardar los cambios. Por favor, intente nuevamente.');
+            }
+        });
+    });
 });
 </script>
 {% endblock %}
