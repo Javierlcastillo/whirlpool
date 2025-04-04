@@ -2,9 +2,17 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic import TemplateView
-from django.views.generic import RedirectView
-from users.views import CustomLoginView, CustomLogoutView  # Importar las vistas personalizadas
+from django.views.generic import TemplateView, RedirectView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from users.views import CustomLoginView, CustomLogoutView
+
+# Creamos una vista protegida para el dashboard
+class DashboardView(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        return context
 
 urlpatterns = [
     # Redirigir la raíz a la página de login
@@ -14,8 +22,8 @@ urlpatterns = [
     path('login/', CustomLoginView.as_view(), name='login'),
     path('logout/', CustomLogoutView.as_view(), name='logout'),
     
-    # Dashboard
-    path('dashboard/', TemplateView.as_view(template_name='dashboard.html'), name='dashboard'),
+    # Dashboard - Ahora protegido con LoginRequiredMixin
+    path('dashboard/', DashboardView.as_view(), name='dashboard'),
     
     # URLs de la aplicación
     path('courses/', include('courses.urls')),
