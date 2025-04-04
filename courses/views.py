@@ -10,6 +10,7 @@ from django.urls import reverse_lazy
 from .models import Course, Question, Answer, Region, Instructor, CourseApplication, Section
 from .forms import CourseForm, QuestionForm, SectionForm, RegionForm, InstructorForm
 from users.models import Technician
+from courses.models import Desempeno
 
 # Course Views
 class CourseListView(LoginRequiredMixin, ListView):
@@ -51,13 +52,6 @@ class CourseListView(LoginRequiredMixin, ListView):
             
         # Obtener la búsqueda actual
         context['search_query'] = self.request.GET.get('search', '')
-        
-        # Obtener los cursos en los que el usuario está inscrito
-        if self.request.user.is_authenticated:
-            enrolled_courses = Course.objects.filter(
-                enrollments__user=self.request.user
-            ).values_list('id', flat=True)
-            context['enrolled_courses'] = enrolled_courses
             
         return context
 
@@ -80,15 +74,31 @@ class CourseDetailView(LoginRequiredMixin, DetailView):
         sections = Section.objects.filter(course=course).order_by('order')
         context['sections'] = sections
         
-        # Verificar si el usuario ya está inscrito
-        context['is_enrolled'] = course.enrollments.filter(user=self.request.user).exists()
+        # Obtener aplicaciones del curso a regiones
+        context['regions'] = CourseApplication.objects.filter(course=course)
         
-        # Obtener el progreso del usuario si está inscrito
-        if context['is_enrolled']:
-            enrollment = course.enrollments.get(user=self.request.user)
-            context['progress'] = enrollment.progress
-            context['completed_sections'] = enrollment.completed_sections.all()
-            context['completed_questions'] = enrollment.completed_questions.all()
+        # Para propósitos del template, listar todas las regiones disponibles
+        context['all_regions'] = Region.objects.all()
+        
+        # MODIFICAR ESTA PARTE PARA USAR DESEMPENO EN LUGAR DE ENROLLMENTS
+        # Verificar si el usuario ya está inscrito
+        if hasattr(request.user, 'technician'):
+            try:
+                technician = request.user.technician
+                context['is_enrolled'] = Desempeno.objects.filter(
+                    course=course, technician=technician
+                ).exists()
+                
+                if context['is_enrolled']:
+                    desempeno = Desempeno.objects.get(
+                        course=course, technician=technician
+                    )
+                    context['progress'] = desempeno
+                
+            except (Technician.DoesNotExist, Desempeno.DoesNotExist):
+                context['is_enrolled'] = False
+        else:
+            context['is_enrolled'] = False
         
         return context
 
@@ -106,15 +116,15 @@ def enroll_course(request, slug):
     technician = get_object_or_404(Technician, user=request.user)
     
     # Verificar si el usuario ya está inscrito
-    if course.enrollments.filter(user=request.user).exists():
+    if Desempeno.objects.filter(course=course, technician=technician).exists():
         messages.warning(request, "Ya estás inscrito en este curso.")
-        return redirect('course-detail', slug=slug)
+        return redirect('courses:course-detail', slug=slug)
     
     # Crear la inscripción
-    course.enrollments.create(
-        user=request.user,
+    Desempeno.objects.create(
+        course=course,
         technician=technician,
-        region=technician.region
+        estado='started'
     )
     
     messages.success(request, f"Te has inscrito exitosamente en el curso {course.name}")

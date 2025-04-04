@@ -20,8 +20,8 @@
                 </div>
             </div>
             <div class="card-footer d-flex align-items-center justify-content-between">
-                <a href="{% url 'course-list' %}" class="text-white">Ver detalles</a>
-                <a href="{% url 'course-create' %}" class="btn btn-light btn-sm">
+                <a href="{% url 'courses:course-list' %}" class="text-white">Ver detalles</a>
+                <a href="{% url 'courses:course-create' %}" class="btn btn-light btn-sm">
                     <i class="fas fa-plus"></i> Nuevo
                 </a>
             </div>
@@ -40,8 +40,8 @@
                 </div>
             </div>
             <div class="card-footer d-flex align-items-center justify-content-between">
-                <a href="{% url 'technician-list' %}" class="text-white">Ver detalles</a>
-                <a href="{% url 'technician-create' %}" class="btn btn-light btn-sm">
+                <a href="{% url 'users:technician-list' %}" class="text-white">Ver detalles</a>
+                <a href="{% url 'users:technician-create' %}" class="btn btn-light btn-sm">
                     <i class="fas fa-plus"></i> Nuevo
                 </a>
             </div>
@@ -60,8 +60,8 @@
                 </div>
             </div>
             <div class="card-footer d-flex align-items-center justify-content-between">
-                <a href="{% url 'instructor-list' %}" class="text-white">Ver detalles</a>
-                <a href="{% url 'instructor-create' %}" class="btn btn-light btn-sm">
+                <a href="{% url 'courses:instructor-list' %}" class="text-white">Ver detalles</a>
+                <a href="{% url 'courses:instructor-create' %}" class="btn btn-light btn-sm">
                     <i class="fas fa-plus"></i> Nuevo
                 </a>
             </div>
@@ -80,8 +80,8 @@
                 </div>
             </div>
             <div class="card-footer d-flex align-items-center justify-content-between">
-                <a href="{% url 'region-list' %}" class="text-white">Ver detalles</a>
-                <a href="{% url 'region-create' %}" class="btn btn-light btn-sm">
+                <a href="{% url 'courses:region-list' %}" class="text-white">Ver detalles</a>
+                <a href="{% url 'courses:region-create' %}" class="btn btn-light btn-sm">
                     <i class="fas fa-plus"></i> Nueva
                 </a>
             </div>
@@ -99,25 +99,25 @@
             <div class="card-body">
                 <div class="row g-3 justify-content-center">
                     <div class="col-md-3">
-                        <a href="{% url 'course-create' %}" class="btn btn-outline-primary d-flex flex-column align-items-center w-100 py-3">
+                        <a href="{% url 'courses:course-create' %}" class="btn btn-outline-primary d-flex flex-column align-items-center w-100 py-3">
                             <i class="fas fa-plus-circle fa-2x mb-2"></i>
                             <span>Nuevo Curso</span>
                         </a>
                     </div>
                     <div class="col-md-3">
-                        <a href="{% url 'technician-create' %}" class="btn btn-outline-success d-flex flex-column align-items-center w-100 py-3">
+                        <a href="{% url 'users:technician-create' %}" class="btn btn-outline-success d-flex flex-column align-items-center w-100 py-3">
                             <i class="fas fa-user-plus fa-2x mb-2"></i>
                             <span>Nuevo Técnico</span>
                         </a>
                     </div>
                     <div class="col-md-3">
-                        <a href="{% url 'instructor-create' %}" class="btn btn-outline-info d-flex flex-column align-items-center w-100 py-3">
+                        <a href="{% url 'courses:instructor-create' %}" class="btn btn-outline-info d-flex flex-column align-items-center w-100 py-3">
                             <i class="fas fa-chalkboard-teacher fa-2x mb-2"></i>
                             <span>Nuevo Instructor</span>
                         </a>
                     </div>
                     <div class="col-md-3">
-                        <a href="{% url 'region-create' %}" class="btn btn-outline-warning d-flex flex-column align-items-center w-100 py-3">
+                        <a href="{% url 'courses:region-create' %}" class="btn btn-outline-warning d-flex flex-column align-items-center w-100 py-3">
                             <i class="fas fa-map-marker-alt fa-2x mb-2"></i>
                             <span>Nueva Región</span>
                         </a>
@@ -181,7 +181,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">Últimos Cursos Añadidos</h4>
-                <a href="{% url 'course-list' %}" class="btn btn-sm btn-primary">Ver Todos</a>
+                <a href="{% url 'courses:course-list' %}" class="btn btn-sm btn-primary">Ver Todos</a>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -206,14 +206,14 @@
                                         {{ course.get_category_display }}
                                     </span>
                                 </td>
-                                <td>{{ course.duration_weeks }} semanas</td>
+                                <td>{{ course.duration_hours }} horas</td>
                                 <td>{{ course.created_at|date:"d/m/Y" }}</td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <a href="{% url 'course-detail' course.slug %}" class="btn btn-outline-primary">
+                                        <a href="{% url 'courses:course-detail' course.slug %}" class="btn btn-outline-primary">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{% url 'course-update' course.slug %}" class="btn btn-outline-secondary">
+                                        <a href="{% url 'courses:course-update' course.slug %}" class="btn btn-outline-secondary">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                     </div>
@@ -223,7 +223,7 @@
                             <tr>
                                 <td colspan="6" class="text-center py-3">
                                     <p class="text-muted mb-0">No hay cursos disponibles. 
-                                    <a href="{% url 'course-create' %}">¡Crea tu primer curso!</a></p>
+                                    <a href="{% url 'courses:course-create' %}">¡Crea tu primer curso!</a></p>
                                 </td>
                             </tr>
                             {% endfor %}
