@@ -261,7 +261,7 @@ def manage_course(request, slug=None):
             if is_new:
                 # Si es un curso nuevo, solo guardar el curso básico y redirigir
                 messages.success(request, "Curso creado exitosamente. Ahora puede agregar preguntas y secciones.")
-                return redirect('course-update', slug=created_course.slug)
+                return redirect('courses:course-update', slug=created_course.slug)
             
             # Procesar formsets solo para cursos existentes
             question_formset = QuestionFormSet(request.POST, request.FILES, instance=created_course)
@@ -281,7 +281,7 @@ def manage_course(request, slug=None):
             
             if formsets_valid:
                 messages.success(request, f'Curso actualizado exitosamente')
-                return redirect('course-detail', slug=created_course.slug)
+                return redirect('courses:course-detail', slug=created_course.slug)
             else:
                 messages.warning(request, 'El curso se ha guardado, pero hay errores en algunos campos. Por favor revise el formulario.')
                 
