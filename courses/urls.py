@@ -17,20 +17,6 @@ from .views import (
 app_name = 'courses'
 
 urlpatterns = [
-    # Course URLs
-    path('', CourseListView.as_view(), name='course-list'),
-    path('create/', manage_course, name='course-create'),
-    path('<slug:slug>/', CourseDetailView.as_view(), name='course-detail'),
-    path('<slug:slug>/update/', manage_course, name='course-update'),
-    path('<slug:slug>/enroll/', enroll_course, name='course-enroll'),
-    path('<slug:slug>/complete-section/<int:section_id>/', complete_section, name='complete-section'),
-    path('<slug:slug>/complete-question/<int:question_id>/', complete_question, name='complete-question'),
-    path('<slug:slug>/progress/', course_progress, name='course-progress'),
-    path('<slug:slug>/certificate/', course_certificate, name='course-certificate'),
-    path('<slug:slug>/eliminar/', CourseDeleteView.as_view(), name='course-delete'),
-    path('<slug:slug>/add-region/', add_region_to_course, name='course-add-region'),
-    path('<slug:slug>/remove-region/<int:region_id>/', remove_region_from_course, name='course-remove-region'),
-
     # Region URLs
     path('regiones/', RegionListView.as_view(), name='region-list'),
     path('regiones/nueva/', RegionCreateView.as_view(), name='region-create'),
@@ -44,4 +30,18 @@ urlpatterns = [
     path('instructores/<int:pk>/', InstructorDetailView.as_view(), name='instructor-detail'),
     path('instructores/<int:pk>/editar/', InstructorUpdateView.as_view(), name='instructor-update'),
     path('instructores/<int:pk>/eliminar/', InstructorDeleteView.as_view(), name='instructor-delete'),
+
+    # Course URLs
+    path('', CourseListView.as_view(), name='course-list'),
+    path('create/', manage_course, name='course-create'),
+    path('<slug:slug>/', CourseDetailView.as_view(), name='course-detail'),
+    path('<slug:slug>/update/', manage_course, name='course-update'),
+    path('<slug:slug>/enroll/', enroll_course, name='course-enroll'),
+    path('<slug:slug>/complete-section/<int:section_id>/', complete_section, name='complete-section'),
+    path('<slug:slug>/complete-question/<int:question_id>/', complete_question, name='complete-question'),
+    path('<slug:slug>/progress/', course_progress, name='course-progress'),
+    path('<slug:slug>/certificate/', course_certificate, name='course-certificate'),
+    path('<slug:slug>/eliminar/', CourseDeleteView.as_view(), name='course-delete'),
+    path('<slug:slug>/add-region/', add_region_to_course, name='course-add-region'),
+    path('<slug:slug>/remove-region/<int:region_id>/', remove_region_from_course, name='course-remove-region'),
 ]

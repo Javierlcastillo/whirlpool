@@ -32,8 +32,8 @@ router.register(r'instructors', InstructorViewSet)
 router.register(r'questions', QuestionViewSet)
 router.register(r'answers', AnswerViewSet)
 router.register(r'sections', SectionViewSet)
-router.register(r'course-applications', CourseApplicationViewSet)
-router.register(r'enrollments', EnrollmentViewSet)
+router.register(r'course-applications', CourseApplicationViewSet, basename='courseapplication')
+router.register(r'enrollments', EnrollmentViewSet, basename='enrollment')
 
 urlpatterns = [
     path('', include(router.urls)),

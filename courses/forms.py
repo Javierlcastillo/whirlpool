@@ -9,14 +9,13 @@ class CourseForm(forms.ModelForm):
     
     class Meta:
         model = Course
-        fields = ['name', 'description', 'instructor', 'duration_hours', 'category', 'region']
+        fields = ['name', 'description', 'instructor', 'duration_hours', 'region']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre del curso'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Descripción del curso', 'rows': 4}),
             'duration_hours': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 1000}),
             'instructor': forms.Select(attrs={'class': 'form-select'}),
             'region': forms.Select(attrs={'class': 'form-select'}),
-            'category': forms.Select(attrs={'class': 'form-select'}),
         }
         labels = {
             'name': 'Nombre',
@@ -24,7 +23,6 @@ class CourseForm(forms.ModelForm):
             'instructor': 'Instructor',
             'region': 'Región',
             'duration_hours': 'Duración (horas)',
-            'category': 'Categoría'
         }
     
     def __init__(self, *args, **kwargs):
@@ -35,7 +33,7 @@ class CourseForm(forms.ModelForm):
                 field.widget.attrs['class'] = 'form-control'
                 
         # Asegurarse de que los campos select tengan la clase correcta
-        for field_name in ['instructor', 'region', 'category']:
+        for field_name in ['instructor', 'region']:
             if field_name in self.fields:
                 self.fields[field_name].widget.attrs['class'] = 'form-select'
 

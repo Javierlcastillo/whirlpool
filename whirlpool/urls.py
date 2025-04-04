@@ -53,9 +53,9 @@ urlpatterns = [
     path('dashboard/', DashboardView.as_view(), name='dashboard'),
     
     # URLs de la aplicación
-    path('courses/', include('courses.urls')),
+    path('users/', include('users.urls', namespace='users')),
+    path('', include('courses.urls')),
     path('api/', include('api.urls')),
-    path('users/', include('users.urls')),
     
     # Panel de administración
     path('admin/', admin.site.urls),

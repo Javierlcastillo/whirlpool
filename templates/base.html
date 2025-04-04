@@ -121,5 +121,19 @@
     
     <!-- Scripts adicionales -->
     {% block scripts %}{% endblock %}
+    
+    <script>
+        // Manejar la navegación en el menú desplegable
+        document.addEventListener('DOMContentLoaded', function() {
+            const dropdownItems = document.querySelectorAll('.dropdown-item');
+            dropdownItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    if (this.getAttribute('href') !== '#') {
+                        window.location.href = this.getAttribute('href');
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

@@ -18,7 +18,7 @@
         </form>
     </div>
     <div class="col-md-6 text-md-end">
-        <a href="{% url 'region-create' %}" class="btn btn-primary">
+        <a href="{% url 'courses:region-create' %}" class="btn btn-primary">
             <i class="fas fa-plus-circle me-1"></i> Nueva Región
         </a>
     </div>
@@ -38,6 +38,7 @@
                         <th>ID</th>
                         <th>Nombre</th>
                         <th>Técnicos</th>
+                        <th>Instructores</th>
                         <th>Cursos</th>
                         <th>Acciones</th>
                     </tr>
@@ -47,7 +48,7 @@
                     <tr>
                         <td>{{ region.id }}</td>
                         <td>
-                            <a href="{% url 'region-detail' region.pk %}" class="text-decoration-none fw-bold">
+                            <a href="{% url 'courses:region-detail' region.pk %}" class="text-decoration-none fw-bold">
                                 {{ region.nombre }}
                             </a>
                         </td>
@@ -55,17 +56,20 @@
                             <span class="badge bg-success">{{ region.technicians.count }} técnicos</span>
                         </td>
                         <td>
-                            <span class="badge bg-info">{{ region.course_applications.count }} cursos</span>
+                            <span class="badge bg-info">{{ region.instructors.count }} instructores</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary">{{ region.course_applications.count }} cursos</span>
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <a href="{% url 'region-detail' region.pk %}" class="btn btn-outline-primary" title="Ver">
+                                <a href="{% url 'courses:region-detail' region.pk %}" class="btn btn-outline-primary" title="Ver">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{% url 'region-update' region.pk %}" class="btn btn-outline-secondary" title="Editar">
+                                <a href="{% url 'courses:region-update' region.pk %}" class="btn btn-outline-secondary" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="{% url 'region-delete' region.pk %}" class="btn btn-outline-danger" title="Eliminar">
+                                <a href="{% url 'courses:region-delete' region.pk %}" class="btn btn-outline-danger" title="Eliminar">
                                     <i class="fas fa-trash"></i>
                                 </a>
                             </div>
@@ -73,9 +77,9 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center py-4">
+                        <td colspan="6" class="text-center py-4">
                             <p class="text-muted mb-0">No hay regiones disponibles.</p>
-                            <a href="{% url 'region-create' %}" class="btn btn-primary mt-3">
+                            <a href="{% url 'courses:region-create' %}" class="btn btn-primary mt-3">
                                 <i class="fas fa-plus-circle me-1"></i> Crear Primera Región
                             </a>
                         </td>
@@ -88,4 +92,69 @@
 </div>
 
 <!-- Paginación (similar a la de cursos) -->
+{% if regions.has_other_pages %}
+<nav aria-label="Paginación de regiones" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if regions.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" aria-label="Primera">
+                <span aria-hidden="true">&laquo;&laquo;</span>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ regions.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" aria-label="Anterior">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <a class="page-link" href="#" aria-label="Primera">
+                <span aria-hidden="true">&laquo;&laquo;</span>
+            </a>
+        </li>
+        <li class="page-item disabled">
+            <a class="page-link" href="#" aria-label="Anterior">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        {% endif %}
+        
+        {% for i in regions.paginator.page_range %}
+            {% if regions.number == i %}
+            <li class="page-item active" aria-current="page">
+                <span class="page-link">{{ i }}</span>
+            </li>
+            {% elif i > regions.number|add:'-3' and i < regions.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ i }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">{{ i }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if regions.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ regions.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" aria-label="Siguiente">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ regions.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" aria-label="Última">
+                <span aria-hidden="true">&raquo;&raquo;</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <a class="page-link" href="#" aria-label="Siguiente">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+        <li class="page-item disabled">
+            <a class="page-link" href="#" aria-label="Última">
+                <span aria-hidden="true">&raquo;&raquo;</span>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
 {% endblock %}

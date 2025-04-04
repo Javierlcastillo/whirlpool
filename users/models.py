@@ -26,16 +26,16 @@ class Technician(models.Model):
         verbose_name='Usuario'
     )
     name = models.CharField(max_length=200, verbose_name='Nombre', blank=True)
-    employee_number = models.CharField(
-        max_length=50, 
+    numero_empleado = models.CharField(
+        max_length=20, 
         unique=True,
-        verbose_name='Número de empleado'
+        verbose_name='Número de empleado',
+        help_text='Este será el nombre de usuario para iniciar sesión'
     )
     region = models.ForeignKey(
-        'courses.Region',  # Referencia por string para evitar importación circular
+        'courses.Region',
         on_delete=models.SET_NULL,
         null=True,
-        blank=True,
         related_name='technicians',
         verbose_name='Región'
     )
@@ -50,10 +50,10 @@ class Technician(models.Model):
         verbose_name_plural = 'Técnicos'
     
     def __str__(self):
-        return f"{self.name} ({self.employee_number}) - {self.region.name if self.region else 'No Region'}"
+        return f"{self.user.get_full_name()} ({self.numero_empleado})"
     
     def get_absolute_url(self):
-        return reverse('technician-detail', kwargs={'pk': self.pk})
+        return reverse('users:technician-detail', kwargs={'pk': self.pk})
     
     def get_full_name(self):
         if self.name:
@@ -64,6 +64,10 @@ class Technician(models.Model):
         # Si no hay nombre asignado, usar el del usuario
         if not self.name and self.user:
             self.name = self.user.get_full_name()
+        # Asegurarse de que el username del usuario sea el número de empleado
+        if self.user:
+            self.user.username = self.numero_empleado
+            self.user.save()
         super().save(*args, **kwargs)
 
     @property

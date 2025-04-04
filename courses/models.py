@@ -16,6 +16,9 @@ class Region(models.Model):
     
     def __str__(self):
         return self.nombre
+        
+    def get_absolute_url(self):
+        return reverse('courses:region-detail', kwargs={'pk': self.pk})
 
 class Instructor(models.Model):
     """Modelo para instructores."""
@@ -35,15 +38,11 @@ class Instructor(models.Model):
     def __str__(self):
         return self.name
 
+    def get_absolute_url(self):
+        return reverse('courses:instructor-detail', kwargs={'pk': self.pk})
+
 class Course(models.Model):
     """Modelo para los cursos de capacitación."""
-    CATEGORY_CHOICES = [
-        ('reparacion', 'Reparación'),
-        ('instalacion', 'Instalación'),
-        ('diagnostico', 'Diagnóstico'),
-        ('mantenimiento', 'Mantenimiento'),
-    ]
-    
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=200, verbose_name='Nombre')
     slug = models.SlugField(max_length=250, unique=True, blank=True)
@@ -57,12 +56,6 @@ class Course(models.Model):
         verbose_name='Instructor'
     )
     duration_hours = models.PositiveSmallIntegerField(verbose_name='Duración (horas)', default=8)
-    category = models.CharField(
-        max_length=20, 
-        choices=CATEGORY_CHOICES, 
-        default='reparacion',
-        verbose_name='Categoría'
-    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Última actualización')
     region = models.ForeignKey(
@@ -103,17 +96,7 @@ class Course(models.Model):
         super().save(*args, **kwargs)
     
     def get_absolute_url(self):
-        return reverse('course-detail', kwargs={'slug': self.slug})
-
-    def get_category_class(self):
-        """Devuelve la clase de color CSS según la categoría."""
-        category_classes = {
-            'reparacion': 'danger',
-            'instalacion': 'success',
-            'diagnostico': 'primary',
-            'mantenimiento': 'secondary',
-        }
-        return category_classes.get(self.category, 'info')
+        return reverse('courses:course-detail', kwargs={'slug': self.slug})
 
 class CourseApplication(models.Model):
     """Modelo para aplicación de cursos a regiones."""

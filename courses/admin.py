@@ -18,8 +18,8 @@ class CourseApplicationInline(admin.TabularInline):
     show_change_link = True
 
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'duration_hours', 'instructor', 'region', 'created_at')
-    list_filter = ('category', 'instructor', 'region')
+    list_display = ('name', 'duration_hours', 'instructor', 'region', 'created_at')
+    list_filter = ('instructor', 'region')
     search_fields = ('name', 'description')
     prepopulated_fields = {'slug': ('name',)}
     readonly_fields = ('created_at', 'updated_at')

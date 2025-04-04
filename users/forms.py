@@ -5,6 +5,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, HTML
 
 from .models import Technician
+from courses.models import Region
 
 class CustomAuthenticationForm(AuthenticationForm):
     """Formulario personalizado de autenticación."""
@@ -63,34 +64,29 @@ class UserForm(forms.ModelForm):
         return cleaned_data
 
 class TechnicianForm(forms.ModelForm):
-    """Formulario para técnicos (extensión de User)."""
-    
+    first_name = forms.CharField(max_length=30, required=True, label='Nombre')
+    last_name = forms.CharField(max_length=30, required=True, label='Apellido')
+    password = forms.CharField(widget=forms.PasswordInput, required=True, label='Contraseña')
+    numero_empleado = forms.CharField(max_length=20, required=True, label='Número de empleado')
+    region = forms.ModelChoiceField(
+        queryset=Region.objects.all(),
+        required=True,
+        label='Región'
+    )
+
     class Meta:
         model = Technician
-        fields = ['employee_number', 'region']
-        widgets = {
-            'employee_number': forms.TextInput(attrs={'placeholder': 'Número de Empleado', 'class': 'form-control'}),
-            'region': forms.Select(attrs={'class': 'form-select', 'required': 'required'}),
-        }
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.form_method = 'post'
-        self.helper.form_class = 'form-horizontal'
-        
-        # Hacer que la región sea obligatoria
-        self.fields['region'].required = True
-        
-        self.helper.layout = Layout(
-            Row(
-                Column('employee_number', css_class='form-group col-md-6 mb-0'),
-                Column('region', css_class='form-group col-md-6 mb-0'),
-                css_class='form-row'
-            ),
-            Div(
-                Submit('submit', 'Guardar', css_class='btn btn-primary'),
-                HTML('<a href="{% url \'technician-list\' %}" class="btn btn-secondary">Cancelar</a>'),
-                css_class='text-right'
-            )
+        fields = ['numero_empleado', 'region']
+
+    def save(self, commit=True):
+        technician = super().save(commit=False)
+        user = User.objects.create_user(
+            username=self.cleaned_data['numero_empleado'],
+            password=self.cleaned_data['password'],
+            first_name=self.cleaned_data['first_name'],
+            last_name=self.cleaned_data['last_name']
         )
+        technician.user = user
+        if commit:
+            technician.save()
+        return technician

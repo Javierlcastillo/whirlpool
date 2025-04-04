@@ -5,6 +5,18 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.contrib.auth.models import User
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib import messages
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse_lazy
+from django.views.generic import (
+    ListView, DetailView, CreateView, UpdateView, DeleteView,
+    TemplateView
+)
+from django.views.generic.edit import FormView
+from django.utils.decorators import method_decorator
+from django.db.models import Q
 
 from .models import Technician
 from .forms import TechnicianForm, UserForm, CustomAuthenticationForm
@@ -16,7 +28,7 @@ class SuperuserRequiredMixin:
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated or not request.user.is_superuser:
             messages.error(request, "Acceso denegado. Solo administradores tienen permiso para acceder.")
-            return redirect('login')
+            return redirect('users:login')
         return super().dispatch(request, *args, **kwargs)
 
 class CustomLoginView(LoginView):
@@ -31,7 +43,7 @@ class CustomLoginView(LoginView):
 
 class CustomLogoutView(LogoutView):
     """Vista personalizada para logout."""
-    next_page = 'login'
+    next_page = 'users:login'
 
 class TechnicianListView(SuperuserRequiredMixin, ListView):
     """Vista para listar todos los técnicos."""
@@ -52,64 +64,29 @@ class TechnicianDetailView(SuperuserRequiredMixin, DetailView):
         context['courses_teaching'] = self.object.courses_teaching.all()
         return context
 
-class TechnicianCreateView(SuperuserRequiredMixin, CreateView):
+class TechnicianCreateView(LoginRequiredMixin, CreateView):
     """Vista para crear un nuevo técnico."""
     model = Technician
-    template_name = 'users/technician_form.html'
     form_class = TechnicianForm
-    second_form_class = UserForm
-    success_url = reverse_lazy('technician-list')
-    
+    template_name = 'users/technician_form.html'
+    success_url = reverse_lazy('users:technician-list')
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        if 'form' not in context:
-            context['form'] = self.form_class()
-        if 'user_form' not in context:
-            context['user_form'] = self.second_form_class()
+        context['title'] = 'Nuevo Técnico'
         return context
-    
-    def post(self, request, *args, **kwargs):
-        self.object = None
-        form = self.form_class(request.POST)
-        user_form = self.second_form_class(request.POST)
-        
-        if form.is_valid() and user_form.is_valid():
-            # Verificar que se haya seleccionado una región
-            if not form.cleaned_data.get('region'):
-                form.add_error('region', 'Este campo es obligatorio.')
-                return self.render_to_response(
-                    self.get_context_data(form=form, user_form=user_form)
-                )
-                
-            user = user_form.save(commit=False)
-            
-            # Asignar el employee_number como nombre de usuario
-            employee_number = form.cleaned_data.get('employee_number')
-            user.username = employee_number
-            
-            user.set_password(user_form.cleaned_data['password'])
-            # Asegúrate de que los nuevos técnicos NO sean superusuarios
-            user.is_superuser = False
-            user.is_staff = False
-            user.save()
-            
-            technician = form.save(commit=False)
-            technician.user = user
-            technician.save()
-            
-            messages.success(request, 'Técnico creado exitosamente')
-            return redirect(self.success_url)
-        else:
-            return self.render_to_response(
-                self.get_context_data(form=form, user_form=user_form)
-            )
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Técnico creado exitosamente')
+        return response
 
 class TechnicianUpdateView(SuperuserRequiredMixin, UpdateView):
     """Vista para actualizar un técnico existente."""
     model = Technician
     template_name = 'users/technician_form.html'
     form_class = TechnicianForm
-    success_url = reverse_lazy('technician-list')
+    success_url = reverse_lazy('users:technician-list')
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -150,7 +127,7 @@ class TechnicianDeleteView(SuperuserRequiredMixin, DeleteView):
     """Vista para eliminar un técnico."""
     model = Technician
     template_name = 'users/technician_confirm_delete.html'
-    success_url = reverse_lazy('technician-list')
+    success_url = reverse_lazy('users:technician-list')
     
     def delete(self, request, *args, **kwargs):
         messages.success(request, 'Técnico eliminado exitosamente')

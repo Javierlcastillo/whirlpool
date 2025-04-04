@@ -6,6 +6,7 @@
 {% block header_subtitle %}<p class="lead">Administre y visualice todos los cursos disponibles</p>{% endblock %}
 
 {% block content %}
+<!-- DEBUG: Template rendering started -->
 <div class="row mb-4">
     <div class="col-md-8">
         <form method="get" class="row g-3">
@@ -18,17 +19,7 @@
                     </button>
                 </div>
             </div>
-            <div class="col-md-4">
-                <select name="category" class="form-select">
-                    <option value="">Todas las categorías</option>
-                    {% for value, label in categories %}
-                    <option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>
-                        {{ label }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
+            <div class="col-md-6">
                 <button type="submit" class="btn btn-primary w-100">Filtrar</button>
             </div>
         </form>
@@ -41,13 +32,13 @@
 </div>
 
 <div class="row">
+    <!-- DEBUG: Courses count: {{ courses|length }} -->
     {% for course in courses %}
     <div class="col-md-6 col-lg-4 mb-4">
         <div class="card h-100 shadow-sm">
             <div class="card-header bg-white">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">{{ course.name }}</h5>
-                    <span class="badge bg-{{ course.get_category_class }}">{{ course.get_category_display }}</span>
                 </div>
             </div>
             <div class="card-body">
@@ -63,7 +54,7 @@
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <span><i class="fas fa-map-marker-alt me-2"></i> Regiones:</span>
-                        <span class="badge bg-secondary">{{ course.applications.count }}</span>
+                        <span class="badge bg-secondary">{{ course.applications.all|length|default:0 }}</span>
                     </li>
                 </ul>
             </div>
@@ -97,12 +88,12 @@
     <ul class="pagination justify-content-center">
         {% if page_obj.has_previous %}
         <li class="page-item">
-            <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}">
+            <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}">
                 <i class="fas fa-angle-double-left"></i>
             </a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
                 <i class="fas fa-angle-left"></i>
             </a>
         </li>
@@ -115,7 +106,7 @@
         </li>
         {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}">
+            <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">
                 {{ num }}
             </a>
         </li>
@@ -124,12 +115,12 @@
         
         {% if page_obj.has_next %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
                 <i class="fas fa-angle-right"></i>
             </a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}">
                 <i class="fas fa-angle-double-right"></i>
             </a>
         </li>

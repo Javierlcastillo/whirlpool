@@ -18,40 +18,56 @@ class CourseListView(LoginRequiredMixin, ListView):
     template_name = 'courses/course_list.html'
     context_object_name = 'courses'
     paginate_by = 10
+    login_url = '/login/'
+
+    def dispatch(self, request, *args, **kwargs):
+        print(f"[DEBUG] CourseListView.dispatch - User authenticated: {request.user.is_authenticated}")
+        if not request.user.is_authenticated:
+            print("[DEBUG] CourseListView.dispatch - User not authenticated, redirecting to login")
+            return self.handle_no_permission()
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
+        print("[DEBUG] CourseListView.get_queryset - Starting")
         queryset = Course.objects.all().select_related('instructor', 'region')
+        print(f"[DEBUG] CourseListView.get_queryset - Initial queryset count: {queryset.count()}")
         
         # Filtrar por región si se especifica
         region_slug = self.request.GET.get('region')
         if region_slug:
+            print(f"[DEBUG] CourseListView.get_queryset - Filtering by region: {region_slug}")
             queryset = queryset.filter(region__slug=region_slug)
             
         # Filtrar por búsqueda si se especifica
         search_query = self.request.GET.get('search')
         if search_query:
+            print(f"[DEBUG] CourseListView.get_queryset - Filtering by search: {search_query}")
             queryset = queryset.filter(
                 Q(name__icontains=search_query) |
                 Q(description__icontains=search_query) |
-                Q(instructor__first_name__icontains=search_query) |
-                Q(instructor__last_name__icontains=search_query)
+                Q(instructor__name__icontains=search_query)
             )
             
+        print(f"[DEBUG] CourseListView.get_queryset - Final queryset count: {queryset.count()}")
         return queryset.order_by('-created_at')
 
     def get_context_data(self, **kwargs):
+        print("[DEBUG] CourseListView.get_context_data - Starting")
         context = super().get_context_data(**kwargs)
         
         # Obtener todas las regiones para el filtro
         context['regions'] = Region.objects.all()
+        print(f"[DEBUG] CourseListView.get_context_data - Regions count: {context['regions'].count()}")
         
         # Obtener la región actual si se está filtrando
         region_slug = self.request.GET.get('region')
         if region_slug:
+            print(f"[DEBUG] CourseListView.get_context_data - Current region: {region_slug}")
             context['current_region'] = Region.objects.filter(slug=region_slug).first()
             
         # Obtener la búsqueda actual
         context['search_query'] = self.request.GET.get('search', '')
+        print(f"[DEBUG] CourseListView.get_context_data - Search query: {context['search_query']}")
             
         return context
 
@@ -320,28 +336,68 @@ class RegionListView(LoginRequiredMixin, ListView):
     template_name = 'courses/region_list.html'
     context_object_name = 'regions'
     paginate_by = 10
+    
+    def get_queryset(self):
+        queryset = Region.objects.all()
+        
+        # Buscar por nombre si se especifica
+        search_query = self.request.GET.get('search')
+        if search_query:
+            queryset = queryset.filter(nombre__icontains=search_query)
+            
+        return queryset.order_by('nombre')
 
 class RegionDetailView(LoginRequiredMixin, DetailView):
     model = Region
     template_name = 'courses/region_detail.html'
     context_object_name = 'region'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        region = self.get_object()
+        
+        # Obtener técnicos de la región
+        context['technicians'] = Technician.objects.filter(region=region)
+        
+        # Obtener cursos aplicados a la región
+        context['courses'] = Course.objects.filter(
+            Q(region=region) | 
+            Q(applications__region=region)
+        ).distinct()
+        
+        # Obtener instructores de la región
+        context['instructors'] = Instructor.objects.filter(region=region)
+        
+        return context
+
 class RegionCreateView(LoginRequiredMixin, CreateView):
     model = Region
     form_class = RegionForm
     template_name = 'courses/region_form.html'
-    success_url = reverse_lazy('region-list')
+    success_url = reverse_lazy('courses:region-list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Región creada exitosamente')
+        return super().form_valid(form)
 
 class RegionUpdateView(LoginRequiredMixin, UpdateView):
     model = Region
     form_class = RegionForm
     template_name = 'courses/region_form.html'
-    success_url = reverse_lazy('region-list')
+    success_url = reverse_lazy('courses:region-list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Región actualizada exitosamente')
+        return super().form_valid(form)
 
 class RegionDeleteView(LoginRequiredMixin, DeleteView):
     model = Region
     template_name = 'courses/region_confirm_delete.html'
-    success_url = reverse_lazy('region-list')
+    success_url = reverse_lazy('courses:region-list')
+    
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, 'Región eliminada exitosamente')
+        return super().delete(request, *args, **kwargs)
 
 # Instructor Views
 class InstructorListView(LoginRequiredMixin, ListView):
@@ -349,28 +405,59 @@ class InstructorListView(LoginRequiredMixin, ListView):
     template_name = 'courses/instructor_list.html'
     context_object_name = 'instructors'
     paginate_by = 10
+    
+    def get_queryset(self):
+        queryset = Instructor.objects.all()
+        
+        # Buscar por nombre si se especifica
+        search_query = self.request.GET.get('search')
+        if search_query:
+            queryset = queryset.filter(name__icontains=search_query)
+            
+        return queryset.order_by('name')
 
 class InstructorDetailView(LoginRequiredMixin, DetailView):
     model = Instructor
     template_name = 'courses/instructor_detail.html'
     context_object_name = 'instructor'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        instructor = self.get_object()
+        
+        # Obtener cursos que imparte este instructor
+        context['courses'] = Course.objects.filter(instructor=instructor)
+        
+        return context
 
 class InstructorCreateView(LoginRequiredMixin, CreateView):
     model = Instructor
     form_class = InstructorForm
     template_name = 'courses/instructor_form.html'
-    success_url = reverse_lazy('instructor-list')
+    success_url = reverse_lazy('courses:instructor-list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Instructor creado exitosamente')
+        return super().form_valid(form)
 
 class InstructorUpdateView(LoginRequiredMixin, UpdateView):
     model = Instructor
     form_class = InstructorForm
     template_name = 'courses/instructor_form.html'
-    success_url = reverse_lazy('instructor-list')
+    success_url = reverse_lazy('courses:instructor-list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Instructor actualizado exitosamente')
+        return super().form_valid(form)
 
 class InstructorDeleteView(LoginRequiredMixin, DeleteView):
     model = Instructor
     template_name = 'courses/instructor_confirm_delete.html'
-    success_url = reverse_lazy('instructor-list')
+    success_url = reverse_lazy('courses:instructor-list')
+    
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, 'Instructor eliminado exitosamente')
+        return super().delete(request, *args, **kwargs)
 
 # Course Region Management
 @login_required

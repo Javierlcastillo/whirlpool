@@ -3,7 +3,7 @@
 {% block title %}Técnicos - Whirlpool Capacitación{% endblock %}
 
 {% block header_title %}Administración de Técnicos{% endblock %}
-{% block header_subtitle %}<p class="lead">Gestiona los técnicos de la plataforma</p>{% endblock %}
+{% block header_subtitle %}<p class="lead">Gestiona los técnicos del sistema</p>{% endblock %}
 
 {% block content %}
 <div class="row mb-4">
@@ -24,40 +24,9 @@
     </div>
 </div>
 
-<!-- Filtros -->
-<div class="card mb-4">
-    <div class="card-header bg-light">
-        <h5 class="mb-0">Filtros</h5>
-    </div>
-    <div class="card-body">
-        <form method="get" class="row g-3">
-            <div class="col-md-4">
-                <label for="region" class="form-label">Región</label>
-                <select name="region" id="region" class="form-select">
-                    <option value="">Todas las regiones</option>
-                    <option value="norte" {% if request.GET.region == 'norte' %}selected{% endif %}>Norte</option>
-                    <option value="sur" {% if request.GET.region == 'sur' %}selected{% endif %}>Sur</option>
-                    <option value="este" {% if request.GET.region == 'este' %}selected{% endif %}>Este</option>
-                    <option value="oeste" {% if request.GET.region == 'oeste' %}selected{% endif %}>Oeste</option>
-                    <option value="centro" {% if request.GET.region == 'centro' %}selected{% endif %}>Centro</option>
-                    <option value="noroeste" {% if request.GET.region == 'noroeste' %}selected{% endif %}>Noroeste</option>
-                    <option value="noreste" {% if request.GET.region == 'noreste' %}selected{% endif %}>Noreste</option>
-                    <option value="suroeste" {% if request.GET.region == 'suroeste' %}selected{% endif %}>Suroeste</option>
-                    <option value="sureste" {% if request.GET.region == 'sureste' %}selected{% endif %}>Sureste</option>
-                </select>
-            </div>
-            <div class="col-md-8 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary me-2">Aplicar Filtros</button>
-                <a href="{% url 'users:technician-list' %}" class="btn btn-outline-secondary">Limpiar</a>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Lista de técnicos -->
 <div class="card">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Técnicos Registrados</h5>
+        <h5 class="mb-0">Técnicos</h5>
         <span class="badge bg-primary">{{ technicians.count|default:'0' }} técnicos</span>
     </div>
     <div class="card-body p-0">
@@ -65,41 +34,49 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-dark">
                     <tr>
+                        <th>ID</th>
                         <th>Nombre</th>
                         <th>Número de Empleado</th>
                         <th>Región</th>
-                        <th>Email</th>
-                        <th>Cursos</th>
+                        <th>Estado</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for technician in technicians %}
                     <tr>
+                        <td>{{ technician.id }}</td>
                         <td>
-                            <a href="{% url 'users:technician-detail' technician.pk %}" class="text-decoration-none fw-bold">
+                            <a href="{% url 'users:technician-detail' technician.pk %}" class="text-decoration-none">
                                 {{ technician.user.get_full_name }}
                             </a>
                         </td>
-                        <td>{{ technician.employee_number }}</td>
+                        <td>{{ technician.numero_empleado }}</td>
                         <td>
-                            <span class="badge bg-secondary">
-                                {{ technician.get_region_display }}
-                            </span>
+                            {% if technician.region %}
+                            <a href="{% url 'courses:region-detail' technician.region.pk %}" class="text-decoration-none">
+                                {{ technician.region.nombre }}
+                            </a>
+                            {% else %}
+                            <span class="text-muted">Sin región</span>
+                            {% endif %}
                         </td>
-                        <td>{{ technician.user.email }}</td>
                         <td>
-                            <span class="badge bg-info">{{ technician.courses_teaching.count }} cursos</span>
+                            {% if technician.is_active %}
+                            <span class="badge bg-success">Activo</span>
+                            {% else %}
+                            <span class="badge bg-danger">Inactivo</span>
+                            {% endif %}
                         </td>
                         <td>
-                            <div class="btn-group btn-group-sm">
-                                <a href="{% url 'users:technician-detail' technician.pk %}" class="btn btn-outline-primary" title="Ver">
+                            <div class="btn-group">
+                                <a href="{% url 'users:technician-detail' technician.pk %}" class="btn btn-sm btn-outline-primary">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{% url 'users:technician-update' technician.pk %}" class="btn btn-outline-secondary" title="Editar">
+                                <a href="{% url 'users:technician-update' technician.pk %}" class="btn btn-sm btn-outline-secondary">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="{% url 'users:technician-delete' technician.pk %}" class="btn btn-outline-danger" title="Eliminar">
+                                <a href="{% url 'users:technician-delete' technician.pk %}" class="btn btn-sm btn-outline-danger">
                                     <i class="fas fa-trash"></i>
                                 </a>
                             </div>
@@ -108,10 +85,7 @@
                     {% empty %}
                     <tr>
                         <td colspan="6" class="text-center py-4">
-                            <p class="text-muted mb-0">No hay técnicos disponibles.</p>
-                            <a href="{% url 'users:technician-create' %}" class="btn btn-primary mt-3">
-                                <i class="fas fa-plus-circle me-1"></i> Crear Primer Técnico
-                            </a>
+                            <p class="text-muted mb-0">No hay técnicos registrados.</p>
                         </td>
                     </tr>
                     {% endfor %}
@@ -121,18 +95,17 @@
     </div>
 </div>
 
-<!-- Paginación -->
 {% if technicians.has_other_pages %}
 <nav aria-label="Paginación de técnicos" class="mt-4">
     <ul class="pagination justify-content-center">
         {% if technicians.has_previous %}
         <li class="page-item">
-            <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.region %}&region={{ request.GET.region }}{% endif %}" aria-label="Primera">
+            <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" aria-label="Primera">
                 <span aria-hidden="true">&laquo;&laquo;</span>
             </a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ technicians.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.region %}&region={{ request.GET.region }}{% endif %}" aria-label="Anterior">
+            <a class="page-link" href="?page={{ technicians.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" aria-label="Anterior">
                 <span aria-hidden="true">&laquo;</span>
             </a>
         </li>
@@ -156,19 +129,19 @@
             </li>
             {% elif i > technicians.number|add:'-3' and i < technicians.number|add:'3' %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ i }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.region %}&region={{ request.GET.region }}{% endif %}">{{ i }}</a>
+                <a class="page-link" href="?page={{ i }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">{{ i }}</a>
             </li>
             {% endif %}
         {% endfor %}
         
         {% if technicians.has_next %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ technicians.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.region %}&region={{ request.GET.region }}{% endif %}" aria-label="Siguiente">
+            <a class="page-link" href="?page={{ technicians.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" aria-label="Siguiente">
                 <span aria-hidden="true">&raquo;</span>
             </a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ technicians.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.region %}&region={{ request.GET.region }}{% endif %}" aria-label="Última">
+            <a class="page-link" href="?page={{ technicians.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" aria-label="Última">
                 <span aria-hidden="true">&raquo;&raquo;</span>
             </a>
         </li>
