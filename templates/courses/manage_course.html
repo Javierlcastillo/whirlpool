@@ -496,6 +496,25 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Agregar los campos de orden y respuestas para cada pregunta
         questionCards.forEach((question, index) => {
+            // Añadir el ID si existe
+            const questionId = question.dataset.id;
+            if (questionId) {
+                formData.append(`questions-${index}-id`, questionId);
+            }
+            
+            // Añadir el texto de la pregunta
+            const textElement = question.querySelector('[name^="questions-"][name$="-text"]');
+            if (textElement) {
+                formData.append(`questions-${index}-text`, textElement.value);
+            }
+            
+            // Añadir el tipo de pregunta
+            const typeElement = question.querySelector('[name^="questions-"][name$="-type"]');
+            if (typeElement) {
+                formData.append(`questions-${index}-type`, typeElement.value);
+            }
+            
+            // Añadir el orden
             formData.append(`questions-${index}-order`, question.dataset.order);
             
             // Agregar respuestas para la pregunta
