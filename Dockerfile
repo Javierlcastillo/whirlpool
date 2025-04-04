@@ -12,34 +12,34 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
-    netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar requirements primero para aprovechar la caché de Docker
+# Copiar requirements.txt
 COPY requirements.txt .
 
 # Instalar dependencias de Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar el resto del proyecto
+# Copiar el proyecto
 COPY . .
 
-# Crear directorios necesarios y establecer permisos
-RUN mkdir -p /app/staticfiles /app/media && \
-    chmod -R 755 /app/staticfiles /app/media
+# Crear directorios necesarios
+RUN mkdir -p /app/staticfiles /app/media
 
-# Collect static files
+# Recolectar archivos estáticos
 RUN python manage.py collectstatic --noinput
 
-# Puerto donde se expone la aplicación
+# Crear script de inicio
+RUN echo '#!/bin/bash\n\
+while ! nc -z db 5432; do\n\
+  sleep 0.1\n\
+done\n\
+python manage.py migrate\n\
+python manage.py runserver 0.0.0.0:8000' > /app/start.sh && \
+chmod +x /app/start.sh
+
+# Exponer el puerto
 EXPOSE 8000
 
-# Comando para ejecutar la aplicación
-CMD bash -c "echo 'Waiting for postgres...' && \
-             while ! nc -z db 5432; do sleep 1; done && \
-             echo 'PostgreSQL started' && \
-             sleep 5 && \
-             echo 'Applying migrations...' && \
-             python manage.py migrate --noinput && \
-             echo 'Starting server...' && \
-             python manage.py runserver 0.0.0.0:8000"
+# Comando de inicio
+CMD ["/app/start.sh"]
