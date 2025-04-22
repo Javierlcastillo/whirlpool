@@ -55,7 +55,7 @@ urlpatterns = [
     # URLs de la aplicación
     path('users/', include('users.urls', namespace='users')),
     path('courses/', include('courses.urls', namespace='courses')),
-    path('api/', include('api.urls')),
+    path('api/', include('courses.api_urls')),
     
     # Panel de administración
     path('admin/', admin.site.urls),

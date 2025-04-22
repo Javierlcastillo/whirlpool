@@ -126,7 +126,7 @@ class Course(models.Model):
                 'id': section.id,
                 'title': section.title,
                 'content': section.content,
-                'media': section.media,
+                'media': section.media.url if section.media else None,
                 'order': section.order
             })
         
@@ -143,7 +143,8 @@ class Course(models.Model):
                         'id': answer.id,
                         'answer': answer.answer,
                         'is_correct': answer.is_correct,
-                        'number': answer.number
+                        'number': answer.number,
+                        'media': answer.media.url if answer.media else None
                     }
                     for answer in question.answers.all()
                 ]

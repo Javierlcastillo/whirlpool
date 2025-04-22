@@ -17,7 +17,8 @@ from .serializers import (
     AnswerSerializer,
     SectionSerializer,
     CourseApplicationSerializer,
-    EnrollmentSerializer
+    EnrollmentSerializer,
+    UnityGameCourseSerializer
 )
 from .permissions import IsAdminUserOrReadOnly
 
@@ -192,3 +193,99 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             )
         
         return Response({'is_available': is_available})
+
+class UnityGameViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API endpoint para consumir cursos desde un juego en Unity.
+    Proporciona solo acceso de lectura a los datos requeridos.
+    
+    list:
+    Devuelve la lista de todos los cursos disponibles en un formato adaptado para Unity.
+    
+    retrieve:
+    Devuelve los detalles completos de un curso específico, incluyendo secciones y preguntas,
+    en un formato optimizado para el consumo desde Unity.
+    """
+    queryset = Course.objects.filter(is_active=True)
+    serializer_class = UnityGameCourseSerializer
+    lookup_field = 'slug'
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['category', 'instructor__id', 'region__id']
+    search_fields = ['name', 'description']
+    ordering_fields = ['name', 'created_at', 'duration_hours']
+    ordering = ['name']
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @action(detail=False, methods=['get'])
+    def user_info(self, request):
+        """
+        Devuelve información del usuario autenticado para verificación en el juego.
+        """
+        user = request.user
+        try:
+            technician = Technician.objects.get(user=user)
+            region_name = technician.region.nombre if technician.region else ""
+            
+            return Response({
+                'id': technician.id,
+                'employee_number': technician.numero_empleado,
+                'name': technician.name,
+                'region': region_name,
+                'is_active': technician.is_active
+            })
+        except Technician.DoesNotExist:
+            return Response({"detail": "Usuario no es un técnico registrado."}, status=403)
+    
+    @action(detail=False, methods=['get'])
+    def available_courses(self, request):
+        """
+        Obtiene los cursos disponibles para un técnico basado en su región.
+        """
+        user = request.user
+        try:
+            technician = Technician.objects.get(user=user)
+            region = technician.region
+            
+            if not region:
+                return Response({"detail": "Este técnico no tiene una región asignada."}, status=400)
+                
+            course_applications = CourseApplication.objects.filter(region=region)
+            available_courses = [app.course for app in course_applications if app.course.is_active]
+            
+            serializer = self.get_serializer(available_courses, many=True)
+            return Response(serializer.data)
+            
+        except Technician.DoesNotExist:
+            return Response({"detail": "Usuario no es un técnico registrado."}, status=403)
+    
+    @action(detail=True, methods=['post'])
+    def submit_progress(self, request, slug=None):
+        """
+        Recibe y registra el progreso y puntuación del técnico en un curso.
+        """
+        course = self.get_object()
+        user = request.user
+        
+        try:
+            technician = Technician.objects.get(user=user)
+            score = request.data.get('score', 0)
+            status = request.data.get('status', 'in_progress')
+            
+            # Actualizar o crear registro de desempeño
+            desempeno, created = Desempeno.objects.update_or_create(
+                course=course,
+                technician=technician,
+                defaults={
+                    'puntuacion': score,
+                    'estado': status
+                }
+            )
+            
+            return Response({
+                'success': True,
+                'message': 'Progreso registrado correctamente',
+                'desempeno_id': desempeno.id
+            })
+            
+        except Technician.DoesNotExist:
+            return Response({"detail": "Usuario no es un técnico registrado."}, status=403)
