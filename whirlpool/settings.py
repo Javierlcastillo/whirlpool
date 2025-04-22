@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     
     # Third party apps
     'rest_framework',
+    'rest_framework.authtoken',
     'crispy_forms',
     'crispy_bootstrap5',
     'django_filters',
@@ -30,7 +31,6 @@ INSTALLED_APPS = [
     
     # Local apps
     'courses',
-    'api',
     'users',
 ]
 
@@ -153,6 +153,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ],

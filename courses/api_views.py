@@ -1,8 +1,11 @@
-from rest_framework import viewsets, filters, permissions
+from rest_framework import viewsets, filters, permissions, status
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.authtoken.models import Token
 from django.shortcuts import get_object_or_404
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from .models import Course, Desempeno, Region, Instructor, Question, Answer, Section, CourseApplication
 from users.models import Technician
 from .api_serializers import (
@@ -16,7 +19,8 @@ from .api_serializers import (
     QuestionSerializer,
     AnswerSerializer,
     SectionSerializer,
-    CourseApplicationSerializer
+    CourseApplicationSerializer,
+    TechnicianAuthSerializer
 )
 from .api_permissions import IsAdminUserOrReadOnly
 
@@ -162,4 +166,44 @@ class SectionViewSet(viewsets.ModelViewSet):
 class CourseApplicationViewSet(viewsets.ModelViewSet):
     queryset = CourseApplication.objects.all()
     serializer_class = CourseApplicationSerializer
-    permission_classes = [permissions.IsAuthenticated] 
+    permission_classes = [permissions.IsAuthenticated]
+
+@swagger_auto_schema(
+    method='post',
+    request_body=TechnicianAuthSerializer,
+    responses={
+        200: openapi.Response('Autenticación exitosa'),
+        401: openapi.Response('Credenciales inválidas')
+    }
+)
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def technician_login(request):
+    """
+    Endpoint para la autenticación de técnicos.
+    
+    Recibe:
+    - numero_empleado: Número de empleado del técnico
+    - password: Contraseña
+    
+    Devuelve:
+    - authenticated: true/false
+    - message: Mensaje de estado
+    - technician: Datos del técnico (solo si la autenticación es exitosa)
+    """
+    serializer = TechnicianAuthSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        technician = serializer.validated_data['technician']
+        technician_data = TechnicianSerializer(technician).data
+        
+        return Response({
+            'authenticated': True,
+            'message': 'Autenticación exitosa',
+            'technician': technician_data
+        })
+    
+    return Response({
+        'authenticated': False,
+        'message': 'Credenciales inválidas'
+    }, status=status.HTTP_401_UNAUTHORIZED) 
