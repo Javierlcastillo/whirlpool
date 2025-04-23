@@ -311,10 +311,12 @@ class CourseContentOrder(models.Model):
         return f"{self.course} - {self.content_type} {self.content_id} - Orden {self.order}"
     
     def save(self, *args, **kwargs):
-        if not self.pk:
-            # Si es un nuevo registro, asignar el orden más alto + 1
+        # Sólo calcular el orden si no se ha proporcionado explícitamente un valor diferente de 0
+        if not self.pk and self.order == 0:
+            # Si es un nuevo registro y el orden no se ha establecido, asignar el orden más alto + 1
             max_order = CourseContentOrder.objects.filter(course=self.course).aggregate(models.Max('order'))['order__max']
             self.order = (max_order or -1) + 1
+            print(f"MODEL: Calculated order for {self.content_type} {self.content_id}: {self.order}")
         super().save(*args, **kwargs)
     
     @property
@@ -455,35 +457,3 @@ class UserAnswer(models.Model):
         elif self.question.type == 'true_false':
             self.is_correct = self.answer.lower() in ['true', 'verdadero', '1']
         super().save(*args, **kwargs)
-
-@receiver(post_save, sender=Section)
-def create_section_order(sender, instance, created, **kwargs):
-    """Crear o actualizar el orden de una sección cuando se guarda."""
-    if created:
-        # Obtener el máximo orden existente
-        max_order = CourseContentOrder.objects.filter(course=instance.course).aggregate(models.Max('order'))
-        next_order = 0 if max_order['order__max'] is None else max_order['order__max'] + 1
-        
-        # Crear registro de orden
-        CourseContentOrder.objects.create(
-            course=instance.course,
-            content_type='section',
-            content_id=instance.id,
-            order=next_order
-        )
-
-@receiver(post_save, sender=Question)
-def create_question_order(sender, instance, created, **kwargs):
-    """Crear o actualizar el orden de una pregunta cuando se guarda."""
-    if created:
-        # Obtener el máximo orden existente
-        max_order = CourseContentOrder.objects.filter(course=instance.course).aggregate(models.Max('order'))
-        next_order = 0 if max_order['order__max'] is None else max_order['order__max'] + 1
-        
-        # Crear registro de orden
-        CourseContentOrder.objects.create(
-            course=instance.course,
-            content_type='question',
-            content_id=instance.id,
-            order=next_order
-        )

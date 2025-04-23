@@ -75,30 +75,9 @@ class CourseViewSet(viewsets.ModelViewSet):
                         'name': openapi.Schema(type=openapi.TYPE_STRING),
                         'slug': openapi.Schema(type=openapi.TYPE_STRING),
                         'description': openapi.Schema(type=openapi.TYPE_STRING),
-                        'instructor': openapi.Schema(
-                            type=openapi.TYPE_OBJECT,
-                            properties={
-                                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                                'name': openapi.Schema(type=openapi.TYPE_STRING),
-                                'region': openapi.Schema(
-                                    type=openapi.TYPE_OBJECT,
-                                    properties={
-                                        'id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                                        'nombre': openapi.Schema(type=openapi.TYPE_STRING)
-                                    }
-                                )
-                            }
-                        ),
+                        'instructor': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'region': openapi.Schema(type=openapi.TYPE_INTEGER),
                         'duration_hours': openapi.Schema(type=openapi.TYPE_INTEGER),
-                        'created_at': openapi.Schema(type=openapi.TYPE_STRING, format='date-time'),
-                        'updated_at': openapi.Schema(type=openapi.TYPE_STRING, format='date-time'),
-                        'region': openapi.Schema(
-                            type=openapi.TYPE_OBJECT,
-                            properties={
-                                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                                'nombre': openapi.Schema(type=openapi.TYPE_STRING)
-                            }
-                        ),
                         'is_active': openapi.Schema(type=openapi.TYPE_BOOLEAN),
                         'content': openapi.Schema(
                             type=openapi.TYPE_ARRAY,
@@ -107,30 +86,58 @@ class CourseViewSet(viewsets.ModelViewSet):
                                 properties={
                                     'type': openapi.Schema(
                                         type=openapi.TYPE_STRING,
-                                        enum=['section', 'question']
+                                        description="Tipo de contenido: 'section' o tipo de pregunta ('multiple_choice', 'true_false')"
                                     ),
                                     'id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                                    'order': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                    'order': openapi.Schema(
+                                        type=openapi.TYPE_INTEGER,
+                                        description="Valor numérico incremental que indica la posición del elemento en el curso (comienza en 1)"
+                                    ),
                                     # Propiedades específicas de sección
-                                    'title': openapi.Schema(type=openapi.TYPE_STRING),
-                                    'content': openapi.Schema(type=openapi.TYPE_STRING),
-                                    'media': openapi.Schema(type=openapi.TYPE_STRING, format='uri'),
-                                    # Propiedades específicas de pregunta
-                                    'text': openapi.Schema(type=openapi.TYPE_STRING),
-                                    'type': openapi.Schema(
+                                    'title': openapi.Schema(
                                         type=openapi.TYPE_STRING,
-                                        enum=['multiple_choice', 'true_false']
+                                        description="Título de la sección (solo presente si type='section')"
+                                    ),
+                                    'content': openapi.Schema(
+                                        type=openapi.TYPE_STRING,
+                                        description="Contenido textual de la sección (solo presente si type='section')"
+                                    ),
+                                    'media': openapi.Schema(
+                                        type=openapi.TYPE_STRING, 
+                                        format='uri',
+                                        description="URL del archivo multimedia asociado, o null (presente en secciones y respuestas)",
+                                        nullable=True
+                                    ),
+                                    # Propiedades específicas de pregunta
+                                    'text': openapi.Schema(
+                                        type=openapi.TYPE_STRING,
+                                        description="Texto de la pregunta (solo presente si type es un tipo de pregunta)"
                                     ),
                                     'answers': openapi.Schema(
                                         type=openapi.TYPE_ARRAY,
+                                        description="Lista de respuestas a la pregunta (solo presente si type es un tipo de pregunta)",
                                         items=openapi.Schema(
                                             type=openapi.TYPE_OBJECT,
                                             properties={
                                                 'id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                                                'number': openapi.Schema(type=openapi.TYPE_INTEGER),
-                                                'answer': openapi.Schema(type=openapi.TYPE_STRING),
-                                                'media': openapi.Schema(type=openapi.TYPE_STRING, format='uri'),
-                                                'is_correct': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+                                                'number': openapi.Schema(
+                                                    type=openapi.TYPE_INTEGER,
+                                                    description="Número de la respuesta (1, 2, 3...)"
+                                                ),
+                                                'answer': openapi.Schema(
+                                                    type=openapi.TYPE_STRING,
+                                                    description="Texto de la respuesta"
+                                                ),
+                                                'media': openapi.Schema(
+                                                    type=openapi.TYPE_STRING, 
+                                                    format='uri',
+                                                    description="URL del archivo multimedia asociado, o null",
+                                                    nullable=True
+                                                ),
+                                                'is_correct': openapi.Schema(
+                                                    type=openapi.TYPE_BOOLEAN,
+                                                    description="Indica si esta es la respuesta correcta"
+                                                )
                                             }
                                         )
                                     )
@@ -151,8 +158,8 @@ class CourseViewSet(viewsets.ModelViewSet):
         - Contenido: Lista combinada de secciones y preguntas ordenadas por el campo 'order'
         
         Cada elemento en la lista de contenido tiene:
-        - type: 'section' o 'question'
-        - order: Número de orden para la secuencia
+        - type: 'section' o tipo de pregunta ('multiple_choice', 'true_false')
+        - order: Número de orden para la secuencia (comienza en 1)
         - id: Identificador único
         
         Para secciones:
@@ -176,7 +183,22 @@ class CourseViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(
         operation_description="Sincroniza el orden de contenido del curso",
         responses={
-            200: openapi.Response("Sincronización exitosa"),
+            200: openapi.Response(
+                description="Sincronización exitosa", 
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'status': openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Estado de la operación, 'success' si fue exitosa"
+                        ),
+                        'message': openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Mensaje de confirmación con el número de elementos ordenados"
+                        )
+                    }
+                )
+            ),
             404: "Curso no encontrado"
         }
     )
@@ -184,7 +206,14 @@ class CourseViewSet(viewsets.ModelViewSet):
     def sync_content_order(self, request, slug=None):
         """
         Sincroniza los registros de orden para las secciones y preguntas del curso.
-        Útil cuando se migra de la vieja estructura a la nueva.
+        Útil cuando se migra de la vieja estructura a la nueva o cuando hay problemas con los valores de orden.
+        
+        Este endpoint:
+        1. Elimina todos los registros de orden existentes
+        2. Crea nuevos registros con órdenes secuenciales (1, 2, 3...)
+        3. Alterna entre secciones y preguntas para crear un flujo coherente de contenido
+        
+        No requiere parámetros adicionales.
         """
         course = self.get_object()
         items_count = course.sync_content_order()
@@ -219,10 +248,55 @@ class TechnicianViewSet(viewsets.ModelViewSet):
             return TechnicianDetailSerializer
         return TechnicianSerializer
     
+    @swagger_auto_schema(
+        operation_description="Obtiene los cursos disponibles para un técnico basado en su región",
+        responses={
+            200: openapi.Response(
+                description='Lista de cursos disponibles',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                            'name': openapi.Schema(type=openapi.TYPE_STRING),
+                            'slug': openapi.Schema(type=openapi.TYPE_STRING),
+                            'description': openapi.Schema(type=openapi.TYPE_STRING),
+                            'instructor': openapi.Schema(type=openapi.TYPE_INTEGER),
+                            'region': openapi.Schema(type=openapi.TYPE_INTEGER),
+                            'duration_hours': openapi.Schema(type=openapi.TYPE_INTEGER),
+                            'is_active': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+                        }
+                    )
+                )
+            ),
+            400: openapi.Response(
+                description='Error: Técnico sin región asignada',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'detail': openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description='Mensaje de error'
+                        )
+                    }
+                )
+            ),
+            404: "Técnico no encontrado"
+        }
+    )
     @action(detail=True, methods=['get'])
     def available_courses(self, request, pk=None):
         """
         Obtiene los cursos disponibles para un técnico basado en su región.
+        
+        Un curso está disponible para un técnico si existe una aplicación (CourseApplication) 
+        que asocia el curso con la región del técnico.
+        
+        Devuelve:
+        - Una lista de objetos curso con los campos básicos
+        - Error 400 si el técnico no tiene una región asignada
+        - Error 404 si el técnico no existe
         """
         technician = self.get_object()
         
@@ -281,21 +355,105 @@ class DesempenoViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUserOrReadOnly]
 
 class QuestionViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint para gestionar preguntas.
+    
+    list:
+    Devuelve la lista de todas las preguntas.
+    
+    retrieve:
+    Devuelve los detalles de una pregunta específica, incluyendo sus respuestas.
+    
+    create:
+    Crea una nueva pregunta (requiere autenticación).
+    
+    update:
+    Actualiza una pregunta existente (requiere autenticación).
+    
+    partial_update:
+    Actualiza parcialmente una pregunta existente (requiere autenticación).
+    
+    destroy:
+    Elimina una pregunta (requiere autenticación).
+    """
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 class AnswerViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint para gestionar respuestas a preguntas.
+    
+    list:
+    Devuelve la lista de todas las respuestas.
+    
+    retrieve:
+    Devuelve los detalles de una respuesta específica.
+    
+    create:
+    Crea una nueva respuesta (requiere autenticación).
+    
+    update:
+    Actualiza una respuesta existente (requiere autenticación).
+    
+    partial_update:
+    Actualiza parcialmente una respuesta existente (requiere autenticación).
+    
+    destroy:
+    Elimina una respuesta (requiere autenticación).
+    """
     queryset = Answer.objects.all()
     serializer_class = AnswerSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 class SectionViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint para gestionar secciones de contenido.
+    
+    list:
+    Devuelve la lista de todas las secciones.
+    
+    retrieve:
+    Devuelve los detalles de una sección específica.
+    
+    create:
+    Crea una nueva sección (requiere autenticación).
+    
+    update:
+    Actualiza una sección existente (requiere autenticación).
+    
+    partial_update:
+    Actualiza parcialmente una sección existente (requiere autenticación).
+    
+    destroy:
+    Elimina una sección (requiere autenticación).
+    """
     queryset = Section.objects.all()
     serializer_class = SectionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 class CourseApplicationViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint para gestionar aplicaciones de cursos a regiones.
+    
+    list:
+    Devuelve la lista de todas las aplicaciones de cursos.
+    
+    retrieve:
+    Devuelve los detalles de una aplicación específica.
+    
+    create:
+    Crea una nueva aplicación de curso a región (requiere autenticación).
+    
+    update:
+    Actualiza una aplicación existente (requiere autenticación).
+    
+    partial_update:
+    Actualiza parcialmente una aplicación existente (requiere autenticación).
+    
+    destroy:
+    Elimina una aplicación de curso a región (requiere autenticación).
+    """
     queryset = CourseApplication.objects.all()
     serializer_class = CourseApplicationSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -304,8 +462,57 @@ class CourseApplicationViewSet(viewsets.ModelViewSet):
     method='post',
     request_body=TechnicianAuthSerializer,
     responses={
-        200: openapi.Response('Autenticación exitosa'),
-        401: openapi.Response('Credenciales inválidas')
+        200: openapi.Response(
+            description='Autenticación exitosa',
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'authenticated': openapi.Schema(
+                        type=openapi.TYPE_BOOLEAN,
+                        description='Indica si la autenticación fue exitosa'
+                    ),
+                    'message': openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        description='Mensaje descriptivo del resultado'
+                    ),
+                    'technician': openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        description='Datos del técnico (solo si authenticated=true)',
+                        properties={
+                            'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                            'numero_empleado': openapi.Schema(type=openapi.TYPE_STRING),
+                            'name': openapi.Schema(type=openapi.TYPE_STRING),
+                            'region': openapi.Schema(
+                                type=openapi.TYPE_OBJECT,
+                                properties={
+                                    'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                    'nombre': openapi.Schema(type=openapi.TYPE_STRING)
+                                }
+                            ),
+                            'is_active': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                            'created_at': openapi.Schema(type=openapi.TYPE_STRING, format='date-time'),
+                            'updated_at': openapi.Schema(type=openapi.TYPE_STRING, format='date-time')
+                        }
+                    )
+                }
+            )
+        ),
+        401: openapi.Response(
+            description='Credenciales inválidas',
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'authenticated': openapi.Schema(
+                        type=openapi.TYPE_BOOLEAN,
+                        description='Siempre false en caso de error'
+                    ),
+                    'message': openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        description='Mensaje descriptivo del error'
+                    )
+                }
+            )
+        )
     }
 )
 @api_view(['POST'])
