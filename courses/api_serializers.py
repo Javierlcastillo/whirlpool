@@ -1,7 +1,6 @@
 from rest_framework import serializers
-from .models import Course, Section, Question, Answer, Region, Instructor, Desempeno, CourseApplication
-from users.models import Technician
 from django.contrib.auth import authenticate
+from .models import Course, Desempeno, Region, Instructor, Question, Answer, Section, CourseApplication
 
 class RegionSerializer(serializers.ModelSerializer):
     """
@@ -50,7 +49,6 @@ class AnswerSerializer(serializers.ModelSerializer):
         fields = ['id', 'question', 'course', 'number', 'answer', 'media', 'is_correct']
     
     def get_media(self, obj):
-        """Obtiene la URL del archivo multimedia si existe, o None si no existe."""
         if obj.media:
             return self.context['request'].build_absolute_uri(obj.media.url)
         return None
@@ -90,7 +88,6 @@ class SectionSerializer(serializers.ModelSerializer):
         fields = ['id', 'course', 'title', 'content', 'media']
     
     def get_media(self, obj):
-        """Obtiene la URL del archivo multimedia si existe, o None si no existe."""
         if obj.media:
             return self.context['request'].build_absolute_uri(obj.media.url)
         return None
@@ -102,18 +99,21 @@ class CourseSerializer(serializers.ModelSerializer):
     Campos:
     - id: Identificador único del curso
     - name: Nombre del curso
-    - slug: Slug único del curso
+    - slug: Slug único para URLs
     - description: Descripción del curso
-    - instructor: ID del instructor asociado
-    - region: ID de la región asociada
-    - duration_hours: Duración del curso en horas
+    - instructor: Información del instructor
+    - region: Información de la región
+    - duration_hours: Duración en horas
     - is_active: Indica si el curso está activo
     """
+    instructor = InstructorSerializer(read_only=True)
+    region = RegionSerializer(read_only=True)
+    
     class Meta:
         model = Course
         fields = [
             'id', 'name', 'slug', 'description', 'instructor', 'region',
-            'duration_hours', 'is_active'
+            'duration_hours', 'is_active', 'created_at', 'updated_at'
         ]
 
 class CourseApplicationSerializer(serializers.ModelSerializer):
@@ -162,78 +162,6 @@ class DesempenoSerializer(serializers.ModelSerializer):
         model = Desempeno
         fields = ['id', 'course', 'technician', 'puntuacion', 'fecha', 'estado']
 
-class TechnicianSerializer(serializers.ModelSerializer):
-    """
-    Serializer para el modelo Technician.
-    
-    Campos:
-    - id: Identificador único del técnico
-    - numero_empleado: Número de empleado único
-    - name: Nombre del técnico
-    - region: Información de la región asociada
-    - is_active: Indica si el técnico está activo
-    - created_at: Fecha de creación
-    - updated_at: Fecha de última actualización
-    """
-    region = RegionSerializer(read_only=True)
-    
-    class Meta:
-        model = Technician
-        fields = ['id', 'numero_empleado', 'name', 'region', 'is_active', 'created_at', 'updated_at']
-        
-class TechnicianDetailSerializer(TechnicianSerializer):
-    """
-    Serializer detallado para el modelo Technician.
-    Incluye información adicional como desempeños.
-    
-    Hereda todos los campos de TechnicianSerializer y agrega:
-    - desempenos: Lista de desempeños del técnico
-    """
-    desempenos = DesempenoSerializer(many=True, read_only=True)
-    
-    class Meta(TechnicianSerializer.Meta):
-        fields = TechnicianSerializer.Meta.fields + ['desempenos']
-
-class TechnicianAuthSerializer(serializers.Serializer):
-    """
-    Serializer para la autenticación de técnicos.
-    Recibe numero_empleado y password, y valida la autenticación.
-    
-    Campos:
-    - numero_empleado: Número de empleado del técnico
-    - password: Contraseña del técnico
-    """
-    numero_empleado = serializers.CharField(max_length=20)
-    password = serializers.CharField(max_length=128, write_only=True)
-    
-    def validate(self, data):
-        numero_empleado = data.get('numero_empleado')
-        password = data.get('password')
-        
-        if numero_empleado and password:
-            # Autenticar usando el número de empleado como username
-            user = authenticate(username=numero_empleado, password=password)
-            
-            if user:
-                if not user.is_active:
-                    raise serializers.ValidationError('Usuario desactivado.')
-                
-                # Verificar que el usuario es un técnico
-                try:
-                    technician = Technician.objects.get(user=user)
-                    if not technician.is_active:
-                        raise serializers.ValidationError('Este técnico está desactivado.')
-                    
-                    # Añadir los datos del técnico a los datos validados
-                    data['technician'] = technician
-                    return data
-                except Technician.DoesNotExist:
-                    raise serializers.ValidationError('Este usuario no es un técnico registrado.')
-            else:
-                raise serializers.ValidationError('Credenciales incorrectas.')
-        else:
-            raise serializers.ValidationError('Debe proporcionar número de empleado y contraseña.')
-
 class CourseCompleteSerializer(CourseSerializer):
     """
     Serializer para obtener la estructura completa de un curso con sus secciones y preguntas
@@ -252,19 +180,50 @@ class CourseCompleteSerializer(CourseSerializer):
         fields = CourseSerializer.Meta.fields + ['content']
     
     def get_content(self, instance):
-        """
-        Obtiene el contenido ordenado usando el método get_ordered_content del modelo Course.
-        Asegura que las URLs de los medios sean absolutas.
-        """
-        content = instance.get_ordered_content()
+        # Obtener todas las secciones y preguntas del curso
+        sections = instance.sections.all()
+        questions = instance.questions.all()
         
-        # Asegurarse de que las URLs de los medios sean absolutas
-        for item in content:
-            if item['type'] == 'section' and item['media']:
-                item['media'] = self.context['request'].build_absolute_uri(item['media'])
-            elif item['type'] in ['multiple_choice', 'true_false']:
-                for answer in item['answers']:
-                    if answer['media']:
-                        answer['media'] = self.context['request'].build_absolute_uri(answer['media'])
+        # Obtener el orden de cada elemento
+        content_order = instance.content_order.all()
         
-        return content 
+        # Crear un diccionario para mapear IDs a órdenes
+        order_map = {item.content_id: item.order for item in content_order}
+        
+        # Combinar y ordenar el contenido
+        combined_content = []
+        
+        # Agregar secciones
+        for section in sections:
+            combined_content.append({
+                'type': 'section',
+                'id': section.id,
+                'order': order_map.get(section.id, 0),
+                'title': section.title,
+                'content': section.content,
+                'media': section.media.url if section.media else None
+            })
+        
+        # Agregar preguntas
+        for question in questions:
+            combined_content.append({
+                'type': question.type,
+                'id': question.id,
+                'order': order_map.get(question.id, 0),
+                'text': question.text,
+                'answers': [
+                    {
+                        'id': answer.id,
+                        'number': answer.number,
+                        'answer': answer.answer,
+                        'media': answer.media.url if answer.media else None,
+                        'is_correct': answer.is_correct
+                    }
+                    for answer in question.answers.all()
+                ]
+            })
+        
+        # Ordenar por el campo 'order'
+        combined_content.sort(key=lambda x: x['order'])
+        
+        return combined_content 
