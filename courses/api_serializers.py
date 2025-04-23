@@ -64,14 +64,13 @@ class QuestionSerializer(serializers.ModelSerializer):
     - course: ID del curso asociado
     - text: Texto de la pregunta
     - type: Tipo de pregunta (multiple_choice o true_false)
-    - order: Orden de la pregunta en el curso
     - answers: Lista de respuestas asociadas
     """
     answers = AnswerSerializer(many=True, read_only=True)
     
     class Meta:
         model = Question
-        fields = ['id', 'course', 'text', 'type', 'order', 'answers']
+        fields = ['id', 'course', 'text', 'type', 'answers']
 
 class SectionSerializer(serializers.ModelSerializer):
     """
@@ -83,13 +82,12 @@ class SectionSerializer(serializers.ModelSerializer):
     - title: Título de la sección
     - content: Contenido de la sección
     - media: URL del archivo multimedia (si existe)
-    - order: Orden de la sección en el curso
     """
     media = serializers.SerializerMethodField()
     
     class Meta:
         model = Section
-        fields = ['id', 'course', 'title', 'content', 'media', 'order']
+        fields = ['id', 'course', 'title', 'content', 'media']
     
     def get_media(self, obj):
         """Obtiene la URL del archivo multimedia si existe, o None si no existe."""
@@ -234,4 +232,39 @@ class TechnicianAuthSerializer(serializers.Serializer):
             else:
                 raise serializers.ValidationError('Credenciales incorrectas.')
         else:
-            raise serializers.ValidationError('Debe proporcionar número de empleado y contraseña.') 
+            raise serializers.ValidationError('Debe proporcionar número de empleado y contraseña.')
+
+class CourseCompleteSerializer(CourseSerializer):
+    """
+    Serializer para obtener la estructura completa de un curso con sus secciones y preguntas
+    combinadas en una sola lista ordenada por el campo 'order'.
+    
+    Incluye:
+    - Información básica del curso
+    - Contenido: Lista combinada de secciones y preguntas ordenadas por 'order'
+      - Cada elemento tiene un campo 'type' que indica:
+        - 'section': Para secciones
+        - 'multiple_choice' o 'true_false': Para preguntas según su tipo
+    """
+    content = serializers.SerializerMethodField()
+    
+    class Meta(CourseSerializer.Meta):
+        fields = CourseSerializer.Meta.fields + ['content']
+    
+    def get_content(self, instance):
+        """
+        Obtiene el contenido ordenado usando el método get_ordered_content del modelo Course.
+        Asegura que las URLs de los medios sean absolutas.
+        """
+        content = instance.get_ordered_content()
+        
+        # Asegurarse de que las URLs de los medios sean absolutas
+        for item in content:
+            if item['type'] == 'section' and item['media']:
+                item['media'] = self.context['request'].build_absolute_uri(item['media'])
+            elif item['type'] in ['multiple_choice', 'true_false']:
+                for answer in item['answers']:
+                    if answer['media']:
+                        answer['media'] = self.context['request'].build_absolute_uri(answer['media'])
+        
+        return content 

@@ -69,7 +69,7 @@ class SectionForm(forms.ModelForm):
     
     class Meta:
         model = Section
-        fields = ['title', 'content', 'media', 'order']
+        fields = ['title', 'content', 'media']
         widgets = {
             'title': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -82,8 +82,7 @@ class SectionForm(forms.ModelForm):
             }),
             'media': forms.FileInput(attrs={
                 'class': 'form-control'
-            }),
-            'order': forms.HiddenInput()
+            })
         }
         labels = {
             'title': 'Título',
@@ -139,7 +138,7 @@ class QuestionForm(forms.ModelForm):
     
     class Meta:
         model = Question
-        fields = ['text', 'type', 'order']
+        fields = ['text', 'type']
         widgets = {
             'text': forms.Textarea(attrs={
                 'class': 'form-control',
@@ -148,8 +147,7 @@ class QuestionForm(forms.ModelForm):
             }),
             'type': forms.Select(attrs={
                 'class': 'form-control'
-            }),
-            'order': forms.HiddenInput()
+            })
         }
         labels = {
             'text': 'Pregunta',

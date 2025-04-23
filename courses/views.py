@@ -6,8 +6,10 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.forms import inlineformset_factory
 from django.db.models import Q
 from django.urls import reverse_lazy
+from django.http import JsonResponse
+import json
 
-from .models import Course, Question, Answer, Region, Instructor, CourseApplication, Section
+from .models import Course, Question, Answer, Region, Instructor, CourseApplication, Section, CourseContentOrder
 from .forms import CourseForm, QuestionForm, SectionForm, RegionForm, InstructorForm
 from users.models import Technician
 from courses.models import Desempeno
@@ -465,7 +467,19 @@ def course_sections_edit(request, slug):
         return redirect('dashboard')
     
     course = get_object_or_404(Course, slug=slug)
-    sections = Section.objects.filter(course=course).order_by('order')
+    
+    # Obtener las secciones ordenadas a través de CourseContentOrder
+    section_orders = CourseContentOrder.objects.filter(
+        course=course, 
+        content_type='section'
+    ).order_by('order')
+    
+    # Construir una lista ordenada de secciones
+    sections = []
+    for order in section_orders:
+        section = Section.objects.filter(id=order.content_id).first()
+        if section:
+            sections.append(section)
     
     context = {
         'course': course,
@@ -498,16 +512,11 @@ def course_section_add(request, slug):
         
         if title and content:
             try:
-                # Calcular el orden
-                last_order = Section.objects.filter(course=course).order_by('-order').first()
-                order_value = (last_order.order + 1) if last_order else 0
-                
                 # Crear sección directamente
                 section = Section(
                     course=course,
                     title=title,
-                    content=content,
-                    order=order_value
+                    content=content
                 )
                 
                 # Asignar el archivo si existe
@@ -516,7 +525,8 @@ def course_section_add(request, slug):
                     
                 section.save()
                 
-                print(f"Section created with ID: {section.id}, order: {section.order}")
+                # El orden ahora se maneja automáticamente con las señales post_save
+                print(f"Section created with ID: {section.id}")
                 
                 messages.success(request, 'Sección añadida exitosamente.')
                 return redirect('courses:course-edit-sections', slug=course.slug)
@@ -534,7 +544,6 @@ def course_section_add(request, slug):
         'course': course
     }
     return render(request, 'courses/course_section_form.html', context)
-
 
 @login_required
 def course_section_edit(request, slug, section_id):
@@ -620,7 +629,19 @@ def course_questions_edit(request, slug):
         return redirect('dashboard')
     
     course = get_object_or_404(Course, slug=slug)
-    questions = Question.objects.filter(course=course).order_by('order')
+    
+    # Obtener las preguntas ordenadas a través de CourseContentOrder
+    question_orders = CourseContentOrder.objects.filter(
+        course=course, 
+        content_type='question'
+    ).order_by('order')
+    
+    # Construir una lista ordenada de preguntas
+    questions = []
+    for order in question_orders:
+        question = Question.objects.filter(id=order.content_id).first()
+        if question:
+            questions.append(question)
     
     context = {
         'course': course,
@@ -653,36 +674,32 @@ def course_question_add(request, slug):
         
         if text and answers_data:
             try:
-                # Calcular el orden
-                last_order = Question.objects.filter(course=course).order_by('-order').first()
-                order_value = (last_order.order + 1) if last_order else 0
-                
-                # Crear directamente sin form ni relaciones
+                # Crear pregunta directamente
                 question = Question(
                     course=course,
                     text=text,
-                    type=question_type,
-                    order=order_value
+                    type=question_type
                 )
                 question.save()
                 
-                print(f"Question created with ID: {question.id}")
+                # El orden ahora se maneja automáticamente con las señales post_save
                 
-                # Ahora que tenemos un ID, añadimos las respuestas
+                # Procesar las respuestas
                 for i, answer_text in enumerate(answers_data):
-                    if answer_text.strip():  # Solo crear respuestas no vacías
-                        # Determinar si esta respuesta está marcada como correcta
-                        is_correct = str(i) in is_correct_inputs
+                    if answer_text.strip():  # Solo guardar respuestas no vacías
+                        is_correct = False
+                        # Verificar si esta respuesta está marcada como correcta
+                        if is_correct_inputs and str(i) in is_correct_inputs:
+                            is_correct = True
                         
-                        answer = Answer(
+                        # Crear la respuesta
+                        Answer.objects.create(
                             question=question,
                             course=course,
+                            number=i+1,
                             answer=answer_text,
-                            is_correct=is_correct,
-                            number=i + 1
+                            is_correct=is_correct
                         )
-                        answer.save()
-                        print(f"Answer created: {answer_text}, is_correct: {is_correct}")
                 
                 messages.success(request, 'Pregunta añadida exitosamente.')
                 return redirect('courses:course-edit-questions', slug=course.slug)
@@ -690,7 +707,7 @@ def course_question_add(request, slug):
                 print(f"Error creating question: {e}")
                 messages.error(request, f'Error al crear la pregunta: {str(e)}')
         else:
-            messages.error(request, 'Datos incompletos. Por favor, proporcione texto de pregunta y respuestas.')
+            messages.error(request, 'Datos incompletos. Por favor, proporcione texto y al menos una respuesta.')
     
     # Para GET o si POST falla, mostrar el formulario
     form = QuestionForm()
@@ -700,7 +717,6 @@ def course_question_add(request, slug):
         'course': course
     }
     return render(request, 'courses/course_question_form.html', context)
-
 
 @login_required
 def course_question_edit(request, slug, question_id):
@@ -797,70 +813,43 @@ def course_question_delete(request, slug, question_id):
 
 @login_required
 def course_content_order(request, slug):
-    """Vista para gestionar el orden de secciones y preguntas del curso."""
+    """Vista para ordenar el contenido del curso."""
     if not request.user.is_superuser:
         messages.error(request, "No tienes permiso para acceder a esta página.")
         return redirect('dashboard')
     
     course = get_object_or_404(Course, slug=slug)
-    sections = Section.objects.filter(course=course).order_by('order')
-    questions = Question.objects.filter(course=course).order_by('order')
-    
-    # Combinar secciones y preguntas para mostrar en orden único
-    # Usamos un atributo temporal 'content_type' para identificar el tipo
-    content_items = []
-    
-    for section in sections:
-        content_items.append({
-            'id': section.id,
-            'title': section.title,
-            'content_type': 'section',
-            'order': section.order,
-            'object': section
-        })
-    
-    for question in questions:
-        content_items.append({
-            'id': question.id,
-            'title': question.text[:100] + ('...' if len(question.text) > 100 else ''),
-            'content_type': 'question',
-            'order': question.order,
-            'object': question
-        })
-    
-    # Ordenar todos los items por el campo order
-    content_items.sort(key=lambda x: x['order'])
     
     if request.method == 'POST':
-        # Procesar cambios de orden
-        if 'save_order' in request.POST:
-            try:
-                # Obtener los nuevos órdenes desde el formulario
-                new_orders = {}
-                for key, value in request.POST.items():
-                    if key.startswith('order_section_') or key.startswith('order_question_'):
-                        item_type, item_id = key.replace('order_', '').split('_')
-                        new_orders[f"{item_type}_{item_id}"] = int(value)
+        try:
+            # Parsear el JSON desde la solicitud
+            data = json.loads(request.body)
+            new_order = data.get('order', [])
+            
+            # Actualizar el orden de cada elemento
+            for i, item in enumerate(new_order):
+                item_id = item.get('id')
+                item_type = item.get('type')
                 
-                # Actualizar órdenes en la base de datos
-                for key, new_order in new_orders.items():
-                    item_type, item_id = key.split('_')
-                    if item_type == 'section':
-                        section = get_object_or_404(Section, id=item_id, course=course)
-                        section.order = new_order
-                        section.save()
-                        print(f"Updated section {item_id} order to {new_order}")
-                    elif item_type == 'question':
-                        question = get_object_or_404(Question, id=item_id, course=course)
-                        question.order = new_order
-                        question.save()
-                        print(f"Updated question {item_id} order to {new_order}")
+                # Buscar el registro o crearlo si no existe
+                content_order, created = CourseContentOrder.objects.get_or_create(
+                    course=course,
+                    content_type=item_type,
+                    content_id=item_id,
+                    defaults={'order': i}
+                )
                 
-                messages.success(request, 'Orden actualizado exitosamente.')
-                return redirect('courses:course-content-order', slug=course.slug)
-            except Exception as e:
-                print(f"Error updating order: {e}")
-                messages.error(request, f'Error al actualizar el orden: {str(e)}')
+                # Si ya existía, actualizar el orden
+                if not created:
+                    content_order.order = i
+                    content_order.save()
+            
+            return JsonResponse({'status': 'success', 'message': 'Orden actualizado con éxito.'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    
+    # Obtener todos los elementos de contenido ordenados
+    content_items = course.get_ordered_content()
     
     context = {
         'course': course,
@@ -870,7 +859,7 @@ def course_content_order(request, slug):
 
 @login_required
 def course_section_move(request, slug, section_id, direction):
-    """Vista para mover una sección hacia arriba o abajo en el orden."""
+    """Vista para mover una sección del curso arriba o abajo en el orden."""
     if not request.user.is_superuser:
         messages.error(request, "No tienes permiso para acceder a esta página.")
         return redirect('dashboard')
@@ -878,47 +867,66 @@ def course_section_move(request, slug, section_id, direction):
     course = get_object_or_404(Course, slug=slug)
     section = get_object_or_404(Section, id=section_id, course=course)
     
-    # Obtener todas las secciones ordenadas
-    sections = Section.objects.filter(course=course).order_by('order')
+    # Buscar el orden actual
+    try:
+        current_order = CourseContentOrder.objects.get(
+            course=course,
+            content_type='section',
+            content_id=section_id
+        )
+    except CourseContentOrder.DoesNotExist:
+        # Si no existe, crear uno nuevo
+        current_order = CourseContentOrder.objects.create(
+            course=course,
+            content_type='section',
+            content_id=section_id
+        )
     
-    # Encontrar la sección actual y su índice
+    # Obtener todos los órdenes de contenido del curso
+    all_orders = CourseContentOrder.objects.filter(course=course).order_by('order')
+    
+    # Encontrar el índice actual
     current_index = -1
-    for i, s in enumerate(sections):
-        if s.id == section.id:
+    for i, order in enumerate(all_orders):
+        if order.content_type == 'section' and order.content_id == section.id:
             current_index = i
             break
     
     if current_index == -1:
-        messages.error(request, "Sección no encontrada en el curso.")
+        messages.error(request, "No se pudo encontrar la sección en el orden actual.")
         return redirect('courses:course-edit-sections', slug=course.slug)
     
-    # Determinar nueva posición basada en la dirección
+    # Determinar el índice de intercambio
+    swap_index = -1
     if direction == 'up' and current_index > 0:
-        # Intercambiar con la sección anterior
-        prev_section = sections[current_index - 1]
-        temp_order = section.order
-        section.order = prev_section.order
-        prev_section.order = temp_order
-        section.save()
-        prev_section.save()
-        messages.success(request, 'Sección movida hacia arriba exitosamente.')
-    elif direction == 'down' and current_index < len(sections) - 1:
-        # Intercambiar con la sección siguiente
-        next_section = sections[current_index + 1]
-        temp_order = section.order
-        section.order = next_section.order
-        next_section.order = temp_order
-        section.save()
-        next_section.save()
-        messages.success(request, 'Sección movida hacia abajo exitosamente.')
+        swap_index = current_index - 1
+    elif direction == 'down' and current_index < len(all_orders) - 1:
+        swap_index = current_index + 1
+    
+    if swap_index != -1:
+        # Intercambiar con el elemento adyacente
+        swap_order = all_orders[swap_index]
+        
+        # Guardar el orden actual temporalmente
+        temp_order = current_order.order
+        
+        # Actualizar los órdenes
+        current_order.order = swap_order.order
+        swap_order.order = temp_order
+        
+        # Guardar los cambios
+        current_order.save()
+        swap_order.save()
+        
+        messages.success(request, f"Sección movida {'arriba' if direction == 'up' else 'abajo'} exitosamente.")
     else:
-        messages.warning(request, "No se puede mover más la sección en esa dirección.")
+        messages.warning(request, f"La sección ya está en el {'inicio' if direction == 'up' else 'final'} de la lista.")
     
     return redirect('courses:course-edit-sections', slug=course.slug)
 
 @login_required
 def course_question_move(request, slug, question_id, direction):
-    """Vista para mover una pregunta hacia arriba o abajo en el orden."""
+    """Vista para mover una pregunta del curso arriba o abajo en el orden."""
     if not request.user.is_superuser:
         messages.error(request, "No tienes permiso para acceder a esta página.")
         return redirect('dashboard')
@@ -926,82 +934,73 @@ def course_question_move(request, slug, question_id, direction):
     course = get_object_or_404(Course, slug=slug)
     question = get_object_or_404(Question, id=question_id, course=course)
     
-    # Obtener todas las preguntas ordenadas
-    questions = Question.objects.filter(course=course).order_by('order')
+    # Buscar el orden actual
+    try:
+        current_order = CourseContentOrder.objects.get(
+            course=course,
+            content_type='question',
+            content_id=question_id
+        )
+    except CourseContentOrder.DoesNotExist:
+        # Si no existe, crear uno nuevo
+        current_order = CourseContentOrder.objects.create(
+            course=course,
+            content_type='question',
+            content_id=question_id
+        )
     
-    # Encontrar la pregunta actual y su índice
+    # Obtener todos los órdenes de contenido del curso
+    all_orders = CourseContentOrder.objects.filter(course=course).order_by('order')
+    
+    # Encontrar el índice actual
     current_index = -1
-    for i, q in enumerate(questions):
-        if q.id == question.id:
+    for i, order in enumerate(all_orders):
+        if order.content_type == 'question' and order.content_id == question.id:
             current_index = i
             break
     
     if current_index == -1:
-        messages.error(request, "Pregunta no encontrada en el curso.")
+        messages.error(request, "No se pudo encontrar la pregunta en el orden actual.")
         return redirect('courses:course-edit-questions', slug=course.slug)
     
-    # Determinar nueva posición basada en la dirección
+    # Determinar el índice de intercambio
+    swap_index = -1
     if direction == 'up' and current_index > 0:
-        # Intercambiar con la pregunta anterior
-        prev_question = questions[current_index - 1]
-        temp_order = question.order
-        question.order = prev_question.order
-        prev_question.order = temp_order
-        question.save()
-        prev_question.save()
-        messages.success(request, 'Pregunta movida hacia arriba exitosamente.')
-    elif direction == 'down' and current_index < len(questions) - 1:
-        # Intercambiar con la pregunta siguiente
-        next_question = questions[current_index + 1]
-        temp_order = question.order
-        question.order = next_question.order
-        next_question.order = temp_order
-        question.save()
-        next_question.save()
-        messages.success(request, 'Pregunta movida hacia abajo exitosamente.')
+        swap_index = current_index - 1
+    elif direction == 'down' and current_index < len(all_orders) - 1:
+        swap_index = current_index + 1
+    
+    if swap_index != -1:
+        # Intercambiar con el elemento adyacente
+        swap_order = all_orders[swap_index]
+        
+        # Guardar el orden actual temporalmente
+        temp_order = current_order.order
+        
+        # Actualizar los órdenes
+        current_order.order = swap_order.order
+        swap_order.order = temp_order
+        
+        # Guardar los cambios
+        current_order.save()
+        swap_order.save()
+        
+        messages.success(request, f"Pregunta movida {'arriba' if direction == 'up' else 'abajo'} exitosamente.")
     else:
-        messages.warning(request, "No se puede mover más la pregunta en esa dirección.")
+        messages.warning(request, f"La pregunta ya está en el {'inicio' if direction == 'up' else 'final'} de la lista.")
     
     return redirect('courses:course-edit-questions', slug=course.slug)
 
 @login_required
 def course_view_content(request, slug):
-    """
-    Vista para que los estudiantes vean el contenido del curso en el orden correcto.
-    """
+    """Vista para ver el contenido del curso."""
     course = get_object_or_404(Course, slug=slug)
     
-    # Verificar si el usuario tiene acceso al curso (si es técnico)
-    # o si es administrador (puede ver todo)
-    has_access = request.user.is_superuser
-    
-    if hasattr(request.user, 'technician'):
-        try:
-            technician = request.user.technician
-            if CourseApplication.objects.filter(
-                course=course, region=technician.region
-            ).exists():
-                has_access = True
-                
-                # Obtener o crear registro de progreso
-                desempeno, created = Desempeno.objects.get_or_create(
-                    course=course,
-                    technician=technician,
-                    defaults={'estado': 'started'}
-                )
-        except:
-            pass
-    
-    if not has_access:
-        messages.error(request, "No tienes acceso a este curso.")
-        return redirect('dashboard')
-    
-    # Obtener contenido ordenado
+    # Obtener el contenido ordenado del curso
     content_items = course.get_ordered_content()
     
     context = {
         'course': course,
-        'content_items': content_items,
-        'is_instructor': request.user.is_superuser,
+        'content_items': content_items
     }
     return render(request, 'courses/course_view_content.html', context)

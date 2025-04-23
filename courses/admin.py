@@ -1,6 +1,9 @@
 # admin.py
 from django.contrib import admin
-from .models import Course, Section, Question, Answer, Desempeno, CourseApplication, Region, Instructor
+from .models import (
+    Course, Section, Question, Answer, Desempeno, 
+    CourseApplication, Region, Instructor, CourseContentOrder
+)
 
 class AnswerInline(admin.TabularInline):
     model = Answer
@@ -35,21 +38,27 @@ class InstructorAdmin(admin.ModelAdmin):
     search_fields = ('name',)
 
 class SectionAdmin(admin.ModelAdmin):
-    list_display = ['title', 'course', 'order']
+    list_display = ['title', 'course']
     list_filter = ['course']
     search_fields = ['title', 'text', 'course__name']
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ('text', 'type', 'order', 'course')
+    list_display = ('text', 'type', 'course')
     list_filter = ('type', 'course')
     search_fields = ('text', 'course__name')
-    ordering = ('course', 'order')
+    ordering = ('course',)
 
 class DesempenoAdmin(admin.ModelAdmin):
     list_display = ['technician', 'course', 'puntuacion', 'fecha', 'estado']
     list_filter = ['estado', 'course', 'technician']
     search_fields = ['technician__name', 'course__name']
+
+@admin.register(CourseContentOrder)
+class CourseContentOrderAdmin(admin.ModelAdmin):
+    list_display = ['course', 'content_type', 'content_id', 'order']
+    list_filter = ['course', 'content_type']
+    ordering = ['course', 'order']
 
 # Registrar los modelos
 admin.site.register(Course, CourseAdmin)

@@ -20,7 +20,8 @@ from .api_serializers import (
     AnswerSerializer,
     SectionSerializer,
     CourseApplicationSerializer,
-    TechnicianAuthSerializer
+    TechnicianAuthSerializer,
+    CourseCompleteSerializer
 )
 from .api_permissions import IsAdminUserOrReadOnly
 
@@ -60,6 +61,137 @@ class CourseViewSet(viewsets.ModelViewSet):
         if self.action == 'retrieve':
             return CourseDetailSerializer
         return CourseSerializer
+
+    @swagger_auto_schema(
+        operation_description="Obtiene la estructura completa de un curso con sus secciones y preguntas "
+                            "combinadas en una sola lista ordenada por el campo 'order'",
+        responses={
+            200: openapi.Response(
+                description="Estructura completa del curso",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'name': openapi.Schema(type=openapi.TYPE_STRING),
+                        'slug': openapi.Schema(type=openapi.TYPE_STRING),
+                        'description': openapi.Schema(type=openapi.TYPE_STRING),
+                        'instructor': openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                'name': openapi.Schema(type=openapi.TYPE_STRING),
+                                'region': openapi.Schema(
+                                    type=openapi.TYPE_OBJECT,
+                                    properties={
+                                        'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                        'nombre': openapi.Schema(type=openapi.TYPE_STRING)
+                                    }
+                                )
+                            }
+                        ),
+                        'duration_hours': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'created_at': openapi.Schema(type=openapi.TYPE_STRING, format='date-time'),
+                        'updated_at': openapi.Schema(type=openapi.TYPE_STRING, format='date-time'),
+                        'region': openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                'nombre': openapi.Schema(type=openapi.TYPE_STRING)
+                            }
+                        ),
+                        'is_active': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        'content': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(
+                                type=openapi.TYPE_OBJECT,
+                                properties={
+                                    'type': openapi.Schema(
+                                        type=openapi.TYPE_STRING,
+                                        enum=['section', 'question']
+                                    ),
+                                    'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                    'order': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                    # Propiedades específicas de sección
+                                    'title': openapi.Schema(type=openapi.TYPE_STRING),
+                                    'content': openapi.Schema(type=openapi.TYPE_STRING),
+                                    'media': openapi.Schema(type=openapi.TYPE_STRING, format='uri'),
+                                    # Propiedades específicas de pregunta
+                                    'text': openapi.Schema(type=openapi.TYPE_STRING),
+                                    'type': openapi.Schema(
+                                        type=openapi.TYPE_STRING,
+                                        enum=['multiple_choice', 'true_false']
+                                    ),
+                                    'answers': openapi.Schema(
+                                        type=openapi.TYPE_ARRAY,
+                                        items=openapi.Schema(
+                                            type=openapi.TYPE_OBJECT,
+                                            properties={
+                                                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                                'number': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                                'answer': openapi.Schema(type=openapi.TYPE_STRING),
+                                                'media': openapi.Schema(type=openapi.TYPE_STRING, format='uri'),
+                                                'is_correct': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+                                            }
+                                        )
+                                    )
+                                }
+                            )
+                        )
+                    }
+                )
+            ),
+            404: "Curso no encontrado"
+        }
+    )
+    @action(detail=True, methods=['get'])
+    def complete_structure(self, request, slug=None):
+        """
+        Obtiene la estructura completa de un curso, incluyendo:
+        - Información básica del curso
+        - Contenido: Lista combinada de secciones y preguntas ordenadas por el campo 'order'
+        
+        Cada elemento en la lista de contenido tiene:
+        - type: 'section' o 'question'
+        - order: Número de orden para la secuencia
+        - id: Identificador único
+        
+        Para secciones:
+        - title: Título de la sección
+        - content: Contenido de la sección
+        - media: URL del archivo multimedia (si existe)
+        
+        Para preguntas:
+        - text: Texto de la pregunta
+        - type: Tipo de pregunta (multiple_choice o true_false)
+        - answers: Lista de respuestas, cada una con:
+          - number: Número de la respuesta
+          - answer: Texto de la respuesta
+          - media: URL del archivo multimedia (si existe)
+          - is_correct: Indica si es la respuesta correcta
+        """
+        course = self.get_object()
+        serializer = CourseCompleteSerializer(course, context={'request': request})
+        return Response(serializer.data)
+
+    @swagger_auto_schema(
+        operation_description="Sincroniza el orden de contenido del curso",
+        responses={
+            200: openapi.Response("Sincronización exitosa"),
+            404: "Curso no encontrado"
+        }
+    )
+    @action(detail=True, methods=['post'])
+    def sync_content_order(self, request, slug=None):
+        """
+        Sincroniza los registros de orden para las secciones y preguntas del curso.
+        Útil cuando se migra de la vieja estructura a la nueva.
+        """
+        course = self.get_object()
+        items_count = course.sync_content_order()
+        return Response({
+            "status": "success", 
+            "message": f"Sincronización completada. {items_count} elementos ordenados."
+        })
 
 class TechnicianViewSet(viewsets.ModelViewSet):
     """

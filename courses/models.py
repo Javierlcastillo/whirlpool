@@ -10,6 +10,8 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 import json
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 User = get_user_model()
 
@@ -112,48 +114,94 @@ class Course(models.Model):
         """
         Obtiene el contenido del curso (secciones y preguntas) en el orden correcto.
         """
-        # Obtener secciones y preguntas ordenadas
-        sections = self.sections.all().order_by('order')
-        questions = self.questions.all().order_by('order')
+        # Obtener el orden de contenido
+        ordered_content = self.content_order.all().order_by('order')
         
-        # Combinar en una lista ordenada
+        # Crear una lista para el resultado final
         content_items = []
         
-        # Agregar secciones
-        for section in sections:
-            content_items.append({
-                'type': 'section',
-                'id': section.id,
-                'title': section.title,
-                'content': section.content,
-                'media': section.media.url if section.media else None,
-                'order': section.order
-            })
-        
-        # Agregar preguntas
-        for question in questions:
-            content_items.append({
-                'type': 'question',
-                'id': question.id,
-                'text': question.text,
-                'type': question.type,
-                'order': question.order,
-                'answers': [
-                    {
-                        'id': answer.id,
-                        'answer': answer.answer,
-                        'is_correct': answer.is_correct,
-                        'number': answer.number,
-                        'media': answer.media.url if answer.media else None
-                    }
-                    for answer in question.answers.all()
-                ]
-            })
-        
-        # Ordenar por el campo 'order'
-        content_items.sort(key=lambda x: x['order'])
+        # Procesar cada elemento ordenado
+        for item in ordered_content:
+            content_obj = item.content_object
+            
+            if not content_obj:
+                continue
+                
+            if item.content_type == 'section':
+                content_items.append({
+                    'type': 'section',
+                    'id': content_obj.id,
+                    'title': content_obj.title,
+                    'content': content_obj.content,
+                    'media': content_obj.media.url if content_obj.media else None,
+                    'order': item.order
+                })
+            elif item.content_type == 'question':
+                content_items.append({
+                    'type': content_obj.type,
+                    'id': content_obj.id,
+                    'text': content_obj.text,
+                    'order': item.order,
+                    'answers': [
+                        {
+                            'id': answer.id,
+                            'answer': answer.answer,
+                            'is_correct': answer.is_correct,
+                            'number': answer.number,
+                            'media': answer.media.url if answer.media else None
+                        }
+                        for answer in content_obj.answers.all()
+                    ]
+                })
         
         return content_items
+
+    def sync_content_order(self):
+        """
+        Sincroniza los registros de orden para las secciones y preguntas de este curso.
+        Útil cuando se migra de la vieja estructura a la nueva.
+        """
+        # Obtener todos los elementos existentes
+        sections = self.sections.all()
+        questions = self.questions.all()
+        
+        # Eliminar todos los registros de orden existentes
+        CourseContentOrder.objects.filter(course=self).delete()
+        
+        # Crear nuevos registros de orden
+        order_counter = 0
+        
+        # Alternar entre secciones y preguntas, ordenando por ID por simplicidad
+        # Esto asegura que se mezclen en la secuencia aproximada de su creación
+        section_list = list(sections.order_by('id'))
+        question_list = list(questions.order_by('id'))
+        
+        # Determinar la lista más larga
+        max_items = max(len(section_list), len(question_list))
+        
+        # Alternar entre secciones y preguntas
+        for i in range(max_items):
+            # Agregar sección si existe
+            if i < len(section_list):
+                CourseContentOrder.objects.create(
+                    course=self,
+                    content_type='section',
+                    content_id=section_list[i].id,
+                    order=order_counter
+                )
+                order_counter += 1
+            
+            # Agregar pregunta si existe
+            if i < len(question_list):
+                CourseContentOrder.objects.create(
+                    course=self,
+                    content_type='question',
+                    content_id=question_list[i].id,
+                    order=order_counter
+                )
+                order_counter += 1
+        
+        return order_counter  # Devuelve el número de elementos sincronizados
 
 class CourseApplication(models.Model):
     """Modelo para aplicación de cursos a regiones."""
@@ -178,9 +226,21 @@ class CourseApplication(models.Model):
     def __str__(self):
         return f"{self.course} - {self.region}"
 
-class Section(models.Model):
+class CourseContent(models.Model):
+    """Modelo base para el contenido del curso (secciones y preguntas)."""
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        self.updated_at = timezone.now()
+        super().save(*args, **kwargs)
+
+class Section(CourseContent):
     """Modelo para secciones de cursos."""
-    
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sections')
     title = models.CharField(max_length=200, verbose_name='Título')
     content = models.TextField(verbose_name='Contenido')
@@ -190,43 +250,26 @@ class Section(models.Model):
         null=True,
         verbose_name='Medio (imagen, documento)'
     )
-    order = models.PositiveIntegerField(default=0, verbose_name='Orden')
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(default=timezone.now)
     
     class Meta:
-        ordering = ['order']
         verbose_name = 'Sección'
         verbose_name_plural = 'Secciones'
     
     def __str__(self):
         return f"{self.title}"
-    
-    def save(self, *args, **kwargs):
-        if not self.pk:  # Si es una nueva sección
-            # Obtener el último orden y sumar 1
-            last_order = Section.objects.filter(course=self.course).order_by('-order').first()
-            self.order = (last_order.order + 1) if last_order else 0
-        self.updated_at = timezone.now()
-        super().save(*args, **kwargs)
 
-class Question(models.Model):
+class Question(CourseContent):
     """Modelo para preguntas de cursos."""
-    
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='questions')
     QUESTION_TYPES = (
         ('multiple_choice', 'Opción Múltiple'),
         ('true_false', 'Verdadero/Falso'),
     )
     
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='questions')
     text = models.TextField(verbose_name='Texto de la pregunta')
     type = models.CharField(max_length=20, choices=QUESTION_TYPES, default='multiple_choice', verbose_name='Tipo de pregunta')
-    order = models.PositiveIntegerField(default=0, verbose_name='Orden')
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(default=timezone.now)
     
     class Meta:
-        ordering = ['order']
         verbose_name = 'Pregunta'
         verbose_name_plural = 'Preguntas'
     
@@ -245,14 +288,43 @@ class Question(models.Model):
                 true_count = answers.filter(is_correct=True).count()
                 if true_count != 1:
                     raise ValidationError('Las preguntas de verdadero/falso deben tener exactamente una respuesta verdadera y una falsa.')
+
+class CourseContentOrder(models.Model):
+    """Modelo para gestionar el orden de contenido en un curso."""
+    CONTENT_TYPES = (
+        ('section', 'Sección'),
+        ('question', 'Pregunta'),
+    )
+    
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='content_order')
+    content_type = models.CharField(max_length=10, choices=CONTENT_TYPES)
+    content_id = models.PositiveIntegerField()
+    order = models.PositiveIntegerField(default=0)
+    
+    class Meta:
+        verbose_name = 'Orden de Contenido'
+        verbose_name_plural = 'Orden de Contenidos'
+        ordering = ['course', 'order']
+        unique_together = ['course', 'content_type', 'content_id']
+    
+    def __str__(self):
+        return f"{self.course} - {self.content_type} {self.content_id} - Orden {self.order}"
     
     def save(self, *args, **kwargs):
-        if not self.pk:  # Si es una nueva pregunta
-            # Obtener el último orden y sumar 1
-            last_order = Question.objects.filter(course=self.course).order_by('-order').first()
-            self.order = (last_order.order + 1) if last_order else 0
-        self.updated_at = timezone.now()
+        if not self.pk:
+            # Si es un nuevo registro, asignar el orden más alto + 1
+            max_order = CourseContentOrder.objects.filter(course=self.course).aggregate(models.Max('order'))['order__max']
+            self.order = (max_order or -1) + 1
         super().save(*args, **kwargs)
+    
+    @property
+    def content_object(self):
+        """Obtiene el objeto referenciado (sección o pregunta)."""
+        if self.content_type == 'section':
+            return Section.objects.filter(id=self.content_id).first()
+        elif self.content_type == 'question':
+            return Question.objects.filter(id=self.content_id).first()
+        return None
 
 class Answer(models.Model):
     """Modelo para respuestas a las preguntas."""
@@ -383,3 +455,35 @@ class UserAnswer(models.Model):
         elif self.question.type == 'true_false':
             self.is_correct = self.answer.lower() in ['true', 'verdadero', '1']
         super().save(*args, **kwargs)
+
+@receiver(post_save, sender=Section)
+def create_section_order(sender, instance, created, **kwargs):
+    """Crear o actualizar el orden de una sección cuando se guarda."""
+    if created:
+        # Obtener el máximo orden existente
+        max_order = CourseContentOrder.objects.filter(course=instance.course).aggregate(models.Max('order'))
+        next_order = 0 if max_order['order__max'] is None else max_order['order__max'] + 1
+        
+        # Crear registro de orden
+        CourseContentOrder.objects.create(
+            course=instance.course,
+            content_type='section',
+            content_id=instance.id,
+            order=next_order
+        )
+
+@receiver(post_save, sender=Question)
+def create_question_order(sender, instance, created, **kwargs):
+    """Crear o actualizar el orden de una pregunta cuando se guarda."""
+    if created:
+        # Obtener el máximo orden existente
+        max_order = CourseContentOrder.objects.filter(course=instance.course).aggregate(models.Max('order'))
+        next_order = 0 if max_order['order__max'] is None else max_order['order__max'] + 1
+        
+        # Crear registro de orden
+        CourseContentOrder.objects.create(
+            course=instance.course,
+            content_type='question',
+            content_id=instance.id,
+            order=next_order
+        )
