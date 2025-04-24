@@ -6,6 +6,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.shortcuts import get_object_or_404
 from django.db.models import Avg
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import Course, Desempeno, Region, Instructor, Question, Answer, Section, CourseApplication
 from .api_serializers import (
@@ -239,71 +240,19 @@ class InstructorViewSet(viewsets.ModelViewSet):
 class DesempenoViewSet(viewsets.ModelViewSet):
     """
     API endpoint para gestionar desempeños.
-    
-    Las operaciones de escritura solo están disponibles para usuarios autenticados.
     """
     queryset = Desempeno.objects.all()
-    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = []  # Deshabilitar autenticación
+    permission_classes = []  # Deshabilitar permisos
     
     def get_serializer_class(self):
         if self.action == 'create':
             return DesempenoCreateSerializer
         return DesempenoSerializer
 
-    @swagger_auto_schema(
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            required=['numero_empleado', 'curso_slug', 'duracion_total', 'respuestas_incorrectas', 'aprobado'],
-            properties={
-                'numero_empleado': openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    description='Número de empleado del técnico'
-                ),
-                'curso_slug': openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    description='Slug del curso'
-                ),
-                'duracion_total': openapi.Schema(
-                    type=openapi.TYPE_INTEGER,
-                    description='Duración total en minutos'
-                ),
-                'respuestas_incorrectas': openapi.Schema(
-                    type=openapi.TYPE_INTEGER,
-                    description='Cantidad de respuestas incorrectas'
-                ),
-                'aprobado': openapi.Schema(
-                    type=openapi.TYPE_BOOLEAN,
-                    description='Indica si el técnico aprobó el curso'
-                )
-            }
-        ),
-        responses={
-            201: openapi.Response(
-                description='Desempeño creado exitosamente',
-                schema=DesempenoSerializer()
-            ),
-            400: openapi.Response(
-                description='Error de validación',
-                schema=openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        'numero_empleado': openapi.Schema(
-                            type=openapi.TYPE_ARRAY,
-                            items=openapi.Schema(type=openapi.TYPE_STRING),
-                            description='Errores relacionados con el número de empleado'
-                        ),
-                        'curso_slug': openapi.Schema(
-                            type=openapi.TYPE_ARRAY,
-                            items=openapi.Schema(type=openapi.TYPE_STRING),
-                            description='Errores relacionados con el slug del curso'
-                        )
-                    }
-                )
-            )
-        },
-        operation_description='Crea un nuevo registro de desempeño para un técnico en un curso específico.'
-    )
     def create(self, request, *args, **kwargs):
+        # Deshabilitar CSRF para esta vista
+        request._dont_enforce_csrf_checks = True
         return super().create(request, *args, **kwargs)
 
     @swagger_auto_schema(
