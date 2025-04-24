@@ -39,6 +39,9 @@
             <div class="card-header bg-white">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">{{ course.name }}</h5>
+                    <span class="badge {% if course.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                        {% if course.is_active %}Activo{% else %}Inactivo{% endif %}
+                    </span>
                 </div>
             </div>
             <div class="card-body">

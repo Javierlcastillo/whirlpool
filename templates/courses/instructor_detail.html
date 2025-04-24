@@ -63,7 +63,7 @@
                         <thead class="table-dark">
                             <tr>
                                 <th>Título</th>
-                                <th>Categoría</th>
+                                <th>Estado</th>
                                 <th>Duración</th>
                                 <th>Acciones</th>
                             </tr>
@@ -77,8 +77,8 @@
                                     </a>
                                 </td>
                                 <td>
-                                    <span class="badge bg-{{ course.get_category_class }}">
-                                        {{ course.get_category_display }}
+                                    <span class="badge {% if course.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                                        {% if course.is_active %}Activo{% else %}Inactivo{% endif %}
                                     </span>
                                 </td>
                                 <td>{{ course.duration_hours }} horas</td>

@@ -213,20 +213,107 @@ class CourseDetailSerializer(CourseSerializer):
 class DesempenoSerializer(serializers.ModelSerializer):
     """
     Serializer para el modelo Desempeno.
-    
-    Campos:
-    - id: Identificador único del desempeño
-    - course: Información del curso asociado
-    - technician: ID del técnico asociado
-    - puntuacion: Puntuación obtenida
-    - fecha: Fecha del desempeño
-    - estado: Estado del desempeño (started, in_progress, completed, failed)
     """
     course = CourseSerializer(read_only=True)
+    instructor = InstructorSerializer(read_only=True)
     
     class Meta:
         model = Desempeno
-        fields = ['id', 'course', 'technician', 'puntuacion', 'fecha', 'estado']
+        fields = [
+            'id', 
+            'technician', 
+            'course',
+            'instructor',
+            'fecha',
+            'duracion_total',
+            'respuestas_incorrectas',
+            'aprobado'
+        ]
+
+class DesempenoCreateSerializer(serializers.ModelSerializer):
+    curso_slug = serializers.SlugField(write_only=True)
+    numero_empleado = serializers.CharField(write_only=True)
+    
+    class Meta:
+        model = Desempeno
+        fields = [
+            'numero_empleado',
+            'curso_slug',
+            'duracion_total',
+            'respuestas_incorrectas',
+            'aprobado'
+        ]
+        read_only_fields = ['instructor']
+
+    def create(self, validated_data):
+        # Obtener el curso usando el slug
+        curso_slug = validated_data.pop('curso_slug')
+        try:
+            curso = Course.objects.get(slug=curso_slug)
+        except Course.DoesNotExist:
+            raise serializers.ValidationError({'curso_slug': 'No se encontró el curso con este slug'})
+
+        # Obtener el técnico usando el número de empleado
+        numero_empleado = validated_data.pop('numero_empleado')
+        try:
+            from users.models import Technician
+            technician = Technician.objects.get(numero_empleado=numero_empleado)
+        except Technician.DoesNotExist:
+            raise serializers.ValidationError({'numero_empleado': 'No se encontró el técnico con este número de empleado'})
+
+        # Crear el desempeño con los datos correctos
+        return Desempeno.objects.create(
+            technician=technician,
+            course=curso,
+            instructor=curso.instructor,
+            **validated_data
+        )
+
+class DesempenoMetricsSerializer(serializers.Serializer):
+    total_cursos_completados = serializers.IntegerField()
+    cursos_aprobados = serializers.IntegerField()
+    cursos_reprobados = serializers.IntegerField()
+    total_respuestas_incorrectas = serializers.IntegerField()
+    duracion_promedio = serializers.FloatField()
+    
+    # Métricas por instructor
+    metricas_instructor = serializers.SerializerMethodField()
+    
+    # Métricas por curso
+    metricas_curso = serializers.SerializerMethodField()
+    
+    # Métricas por técnico
+    metricas_tecnico = serializers.SerializerMethodField()
+    
+    def get_metricas_instructor(self, obj):
+        return {
+            instructor.name: {
+                'cursos_aprobados': obj['por_instructor'].get(instructor.id, {}).get('aprobados', 0),
+                'cursos_reprobados': obj['por_instructor'].get(instructor.id, {}).get('reprobados', 0),
+                'respuestas_incorrectas': obj['por_instructor'].get(instructor.id, {}).get('incorrectas', 0),
+                'duracion_promedio': obj['por_instructor'].get(instructor.id, {}).get('duracion_promedio', 0)
+            } for instructor in Instructor.objects.all()
+        }
+    
+    def get_metricas_curso(self, obj):
+        return {
+            curso.name: {
+                'aprobados': obj['por_curso'].get(curso.id, {}).get('aprobados', 0),
+                'reprobados': obj['por_curso'].get(curso.id, {}).get('reprobados', 0),
+                'respuestas_incorrectas': obj['por_curso'].get(curso.id, {}).get('incorrectas', 0),
+                'duracion_promedio': obj['por_curso'].get(curso.id, {}).get('duracion_promedio', 0)
+            } for curso in Course.objects.all()
+        }
+    
+    def get_metricas_tecnico(self, obj):
+        return {
+            tecnico.user.get_full_name() or tecnico.user.username: {
+                'cursos_aprobados': obj['por_tecnico'].get(tecnico.id, {}).get('aprobados', 0),
+                'cursos_reprobados': obj['por_tecnico'].get(tecnico.id, {}).get('reprobados', 0),
+                'respuestas_incorrectas': obj['por_tecnico'].get(tecnico.id, {}).get('incorrectas', 0),
+                'duracion_promedio': obj['por_tecnico'].get(tecnico.id, {}).get('duracion_promedio', 0)
+            } for tecnico in Technician.objects.all()
+        }
 
 class CourseCompleteSerializer(CourseSerializer):
     """

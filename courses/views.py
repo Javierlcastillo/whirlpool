@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.forms import inlineformset_factory
 from django.db import transaction
@@ -1043,3 +1043,29 @@ def course_view_content(request, slug):
         'content_items': content_items
     }
     return render(request, 'courses/course_view_content.html', context)
+
+@login_required
+def toggle_course_status(request, slug):
+    """Alterna el estado activo/inactivo de un curso."""
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'No tienes permiso para realizar esta acción'}, status=403)
+    
+    try:
+        course = Course.objects.get(slug=slug)
+        course.is_active = not course.is_active
+        course.save()
+        return JsonResponse({
+            'success': True,
+            'is_active': course.is_active,
+            'message': f'Curso {"activado" if course.is_active else "desactivado"} correctamente'
+        })
+    except Course.DoesNotExist:
+        return JsonResponse({'error': 'Curso no encontrado'}, status=404)
+
+class MetricsDashboardView(LoginRequiredMixin, TemplateView):
+    """Vista para mostrar el dashboard de métricas detalladas."""
+    template_name = 'courses/metrics_dashboard.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        return context

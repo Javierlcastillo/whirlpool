@@ -50,9 +50,14 @@ class QuestionAdmin(admin.ModelAdmin):
     ordering = ('course',)
 
 class DesempenoAdmin(admin.ModelAdmin):
-    list_display = ['technician', 'course', 'puntuacion', 'fecha', 'estado']
-    list_filter = ['estado', 'course', 'technician']
-    search_fields = ['technician__name', 'course__name']
+    list_display = ['technician', 'course', 'instructor', 'duracion_total', 'respuestas_incorrectas', 'aprobado', 'fecha']
+    list_filter = ['aprobado', 'course', 'instructor', 'technician']
+    search_fields = ['technician__user__username', 'technician__user__first_name', 'technician__user__last_name', 'course__name', 'instructor__name']
+    ordering = ['-fecha']
+    readonly_fields = ['fecha']
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('technician', 'course', 'instructor')
 
 @admin.register(CourseContentOrder)
 class CourseContentOrderAdmin(admin.ModelAdmin):

@@ -27,8 +27,8 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         # Métricas de desempeño
         desempenos = Desempeno.objects.all()
         context['total_desempenos'] = desempenos.count()
-        context['completed_desempenos'] = desempenos.filter(estado='completed').count()
-        context['failed_desempenos'] = desempenos.filter(estado='failed').count()
+        context['completed_desempenos'] = desempenos.filter(aprobado=True).count()
+        context['failed_desempenos'] = desempenos.filter(aprobado=False).count()
         
         # Calcular tasa de aprobación (evitar división por cero)
         if context['total_desempenos'] > 0:

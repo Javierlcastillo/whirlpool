@@ -10,14 +10,15 @@
         
         <div class="collapse navbar-collapse" id="navbarMain">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarCoursesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'courses:metrics-dashboard' %}">
+                        <i class="fas fa-chart-line me-1"></i> Métricas
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'courses:course-list' %}">
                         <i class="fas fa-book me-1"></i> Cursos
                     </a>
-                    <ul class="dropdown-menu" aria-labelledby="navbarCoursesDropdown">
-                        <li><a class="dropdown-item" href="{% url 'courses:course-list' %}" data-bs-toggle="collapse" data-bs-target=".navbar-collapse.show">Listar Cursos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'courses:course-create' %}" data-bs-toggle="collapse" data-bs-target=".navbar-collapse.show">Nuevo Curso</a></li>
-                    </ul>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {% if request.resolver_match.url_name == 'technician-list' %}active{% endif %}" href="{% url 'users:technician-list' %}">
@@ -31,7 +32,7 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {% if request.resolver_match.url_name == 'region-list' %}active{% endif %}" href="{% url 'courses:region-list' %}">
-                        <i class="fas fa-map-marked-alt me-1"></i> Regiones
+                        <i class="fas fa-map-marker-alt me-1"></i> Regiones
                     </a>
                 </li>
             </ul>

@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.shortcuts import get_object_or_404
+from django.db.models import Avg
 
 from .models import Course, Desempeno, Region, Instructor, Question, Answer, Section, CourseApplication
 from .api_serializers import (
@@ -18,7 +19,9 @@ from .api_serializers import (
     AnswerSerializer,
     SectionSerializer,
     CourseApplicationSerializer,
-    CourseCompleteSerializer
+    CourseCompleteSerializer,
+    DesempenoCreateSerializer,
+    DesempenoMetricsSerializer
 )
 from .api_permissions import IsAdminUserOrReadOnly
 
@@ -61,7 +64,8 @@ class CourseViewSet(viewsets.ModelViewSet):
     
     @swagger_auto_schema(
         operation_description="Obtiene la estructura completa de un curso con sus secciones y preguntas "
-                            "combinadas en una sola lista ordenada por el campo 'order'",
+                            "combinadas en una sola lista ordenada por el campo 'order'. "
+                            "Solo disponible para cursos activos.",
         responses={
             200: openapi.Response(
                 description="Estructura completa del curso",
@@ -150,6 +154,11 @@ class CourseViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def complete_structure(self, request, slug=None):
         course = self.get_object()
+        
+        # Si el curso está inactivo, devolver una estructura vacía
+        if not course.is_active:
+            return Response({})
+            
         serializer = CourseCompleteSerializer(course)
         return Response(serializer.data)
     
@@ -231,15 +240,166 @@ class DesempenoViewSet(viewsets.ModelViewSet):
     """
     API endpoint para gestionar desempeños.
     
-    Las operaciones de escritura solo están disponibles para administradores.
+    Las operaciones de escritura solo están disponibles para usuarios autenticados.
     """
     queryset = Desempeno.objects.all()
-    serializer_class = DesempenoSerializer
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['technician__id', 'course__id', 'estado']
-    ordering_fields = ['fecha', 'puntuacion']
-    ordering = ['-fecha']
-    permission_classes = [IsAdminUserOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return DesempenoCreateSerializer
+        return DesempenoSerializer
+
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['numero_empleado', 'curso_slug', 'duracion_total', 'respuestas_incorrectas', 'aprobado'],
+            properties={
+                'numero_empleado': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description='Número de empleado del técnico'
+                ),
+                'curso_slug': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description='Slug del curso'
+                ),
+                'duracion_total': openapi.Schema(
+                    type=openapi.TYPE_INTEGER,
+                    description='Duración total en minutos'
+                ),
+                'respuestas_incorrectas': openapi.Schema(
+                    type=openapi.TYPE_INTEGER,
+                    description='Cantidad de respuestas incorrectas'
+                ),
+                'aprobado': openapi.Schema(
+                    type=openapi.TYPE_BOOLEAN,
+                    description='Indica si el técnico aprobó el curso'
+                )
+            }
+        ),
+        responses={
+            201: openapi.Response(
+                description='Desempeño creado exitosamente',
+                schema=DesempenoSerializer()
+            ),
+            400: openapi.Response(
+                description='Error de validación',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'numero_empleado': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(type=openapi.TYPE_STRING),
+                            description='Errores relacionados con el número de empleado'
+                        ),
+                        'curso_slug': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(type=openapi.TYPE_STRING),
+                            description='Errores relacionados con el slug del curso'
+                        )
+                    }
+                )
+            )
+        },
+        operation_description='Crea un nuevo registro de desempeño para un técnico en un curso específico.'
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        responses={
+            200: DesempenoMetricsSerializer,
+        },
+        operation_description='Obtiene métricas detalladas de desempeño incluyendo estadísticas por instructor, curso y técnico.'
+    )
+    @action(detail=False, methods=['get'])
+    def metricas(self, request):
+        """
+        Obtiene las métricas de desempeño generales y desglosadas por instructor, curso y técnico.
+        """
+        # Obtener todos los desempeños
+        desempenos = Desempeno.objects.all()
+        
+        # Métricas generales
+        metricas = {
+            'total_cursos_completados': desempenos.count(),
+            'cursos_aprobados': desempenos.filter(aprobado=True).count(),
+            'cursos_reprobados': desempenos.filter(aprobado=False).count(),
+            'total_respuestas_incorrectas': sum(d.respuestas_incorrectas for d in desempenos),
+            'duracion_promedio': desempenos.aggregate(Avg('duracion_total'))['duracion_total__avg'] or 0,
+        }
+        
+        # Métricas por instructor
+        metricas['por_instructor'] = {}
+        for desempeno in desempenos:
+            instructor_id = desempeno.instructor_id
+            if instructor_id not in metricas['por_instructor']:
+                metricas['por_instructor'][instructor_id] = {
+                    'aprobados': 0,
+                    'reprobados': 0,
+                    'incorrectas': 0,
+                    'duracion_total': 0,
+                    'count': 0
+                }
+            
+            stats = metricas['por_instructor'][instructor_id]
+            stats['aprobados'] += 1 if desempeno.aprobado else 0
+            stats['reprobados'] += 0 if desempeno.aprobado else 1
+            stats['incorrectas'] += desempeno.respuestas_incorrectas
+            stats['duracion_total'] += desempeno.duracion_total
+            stats['count'] += 1
+            
+            # Calcular promedio de duración
+            stats['duracion_promedio'] = stats['duracion_total'] / stats['count']
+        
+        # Métricas por curso
+        metricas['por_curso'] = {}
+        for desempeno in desempenos:
+            curso_id = desempeno.course_id
+            if curso_id not in metricas['por_curso']:
+                metricas['por_curso'][curso_id] = {
+                    'aprobados': 0,
+                    'reprobados': 0,
+                    'incorrectas': 0,
+                    'duracion_total': 0,
+                    'count': 0
+                }
+            
+            stats = metricas['por_curso'][curso_id]
+            stats['aprobados'] += 1 if desempeno.aprobado else 0
+            stats['reprobados'] += 0 if desempeno.aprobado else 1
+            stats['incorrectas'] += desempeno.respuestas_incorrectas
+            stats['duracion_total'] += desempeno.duracion_total
+            stats['count'] += 1
+            
+            # Calcular promedio de duración
+            stats['duracion_promedio'] = stats['duracion_total'] / stats['count']
+        
+        # Métricas por técnico
+        metricas['por_tecnico'] = {}
+        for desempeno in desempenos:
+            tecnico_id = desempeno.technician_id
+            if tecnico_id not in metricas['por_tecnico']:
+                metricas['por_tecnico'][tecnico_id] = {
+                    'aprobados': 0,
+                    'reprobados': 0,
+                    'incorrectas': 0,
+                    'duracion_total': 0,
+                    'count': 0
+                }
+            
+            stats = metricas['por_tecnico'][tecnico_id]
+            stats['aprobados'] += 1 if desempeno.aprobado else 0
+            stats['reprobados'] += 0 if desempeno.aprobado else 1
+            stats['incorrectas'] += desempeno.respuestas_incorrectas
+            stats['duracion_total'] += desempeno.duracion_total
+            stats['count'] += 1
+            
+            # Calcular promedio de duración
+            stats['duracion_promedio'] = stats['duracion_total'] / stats['count']
+        
+        serializer = DesempenoMetricsSerializer(metricas)
+        return Response(serializer.data)
 
 class QuestionViewSet(viewsets.ModelViewSet):
     """

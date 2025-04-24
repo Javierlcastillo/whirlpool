@@ -1,0 +1,263 @@
+{% extends 'base.html' %}
+
+{% block title %}Métricas de Desempeño - Whirlpool Capacitación{% endblock %}
+
+{% block header_title %}Métricas de Desempeño{% endblock %}
+{% block header_subtitle %}<p class="lead">Análisis detallado del desempeño en los cursos</p>{% endblock %}
+
+{% block extrahead %}
+<style>
+    .metric-card {
+        transition: transform 0.2s;
+    }
+    .metric-card:hover {
+        transform: translateY(-5px);
+    }
+    .chart-container {
+        height: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Métricas Generales -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Resumen General</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white metric-card">
+                            <div class="card-body text-center">
+                                <h3 class="display-4" id="total-cursos">-</h3>
+                                <p class="mb-0">Cursos Completados</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white metric-card">
+                            <div class="card-body text-center">
+                                <h3 class="display-4" id="cursos-aprobados">-</h3>
+                                <p class="mb-0">Cursos Aprobados</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-danger text-white metric-card">
+                            <div class="card-body text-center">
+                                <h3 class="display-4" id="cursos-reprobados">-</h3>
+                                <p class="mb-0">Cursos Reprobados</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white metric-card">
+                            <div class="card-body text-center">
+                                <h3 class="display-4" id="duracion-promedio">-</h3>
+                                <p class="mb-0">Duración Promedio (min)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Métricas por Instructor -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Métricas por Instructor</h4>
+                <button class="btn btn-sm btn-outline-primary" onclick="toggleChart('instructor-chart')">
+                    <i class="fas fa-chart-bar"></i> Alternar Vista
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="chart-container mb-4" id="instructor-chart"></div>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="instructor-table">
+                        <thead>
+                            <tr>
+                                <th>Instructor</th>
+                                <th>Aprobados</th>
+                                <th>Reprobados</th>
+                                <th>Resp. Incorrectas</th>
+                                <th>Duración Promedio</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Métricas por Curso -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Métricas por Curso</h4>
+                <button class="btn btn-sm btn-outline-primary" onclick="toggleChart('curso-chart')">
+                    <i class="fas fa-chart-bar"></i> Alternar Vista
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="chart-container mb-4" id="curso-chart"></div>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="curso-table">
+                        <thead>
+                            <tr>
+                                <th>Curso</th>
+                                <th>Aprobados</th>
+                                <th>Reprobados</th>
+                                <th>Resp. Incorrectas</th>
+                                <th>Duración Promedio</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Métricas por Técnico -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Métricas por Técnico</h4>
+                <button class="btn btn-sm btn-outline-primary" onclick="toggleChart('tecnico-chart')">
+                    <i class="fas fa-chart-bar"></i> Alternar Vista
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="chart-container mb-4" id="tecnico-chart"></div>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="tecnico-table">
+                        <thead>
+                            <tr>
+                                <th>Técnico</th>
+                                <th>Aprobados</th>
+                                <th>Reprobados</th>
+                                <th>Resp. Incorrectas</th>
+                                <th>Duración Promedio</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+let currentChartType = {
+    'instructor-chart': 'bar',
+    'curso-chart': 'bar',
+    'tecnico-chart': 'bar'
+};
+
+function toggleChart(chartId) {
+    currentChartType[chartId] = currentChartType[chartId] === 'bar' ? 'pie' : 'bar';
+    updateCharts();
+}
+
+function formatNumber(num) {
+    return num.toLocaleString('es-MX', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+    });
+}
+
+function updateMetrics() {
+    fetch('/api/desempenos/metricas/')
+        .then(response => response.json())
+        .then(data => {
+            // Actualizar métricas generales
+            document.getElementById('total-cursos').textContent = formatNumber(data.total_cursos_completados);
+            document.getElementById('cursos-aprobados').textContent = formatNumber(data.cursos_aprobados);
+            document.getElementById('cursos-reprobados').textContent = formatNumber(data.cursos_reprobados);
+            document.getElementById('duracion-promedio').textContent = formatNumber(data.duracion_promedio);
+
+            // Actualizar tablas
+            updateTable('instructor-table', data.metricas_instructor);
+            updateTable('curso-table', data.metricas_curso);
+            updateTable('tecnico-table', data.metricas_tecnico);
+
+            // Actualizar gráficos
+            updateCharts(data);
+        });
+}
+
+function updateTable(tableId, data) {
+    const tbody = document.getElementById(tableId).getElementsByTagName('tbody')[0];
+    tbody.innerHTML = '';
+    
+    Object.entries(data).forEach(([name, metrics]) => {
+        const row = tbody.insertRow();
+        row.insertCell().textContent = name;
+        row.insertCell().textContent = formatNumber(metrics.aprobados || metrics.cursos_aprobados);
+        row.insertCell().textContent = formatNumber(metrics.reprobados || metrics.cursos_reprobados);
+        row.insertCell().textContent = formatNumber(metrics.incorrectas || metrics.respuestas_incorrectas);
+        row.insertCell().textContent = formatNumber(metrics.duracion_promedio);
+    });
+}
+
+function createBarChart(data, chartId, title) {
+    const names = Object.keys(data);
+    const aprobados = names.map(name => data[name].aprobados || data[name].cursos_aprobados);
+    const reprobados = names.map(name => data[name].reprobados || data[name].cursos_reprobados);
+
+    const trace1 = {
+        x: names,
+        y: aprobados,
+        name: 'Aprobados',
+        type: currentChartType[chartId],
+        marker: {color: '#28a745'}
+    };
+
+    const trace2 = {
+        x: names,
+        y: reprobados,
+        name: 'Reprobados',
+        type: currentChartType[chartId],
+        marker: {color: '#dc3545'}
+    };
+
+    const layout = {
+        title: title,
+        barmode: 'group',
+        height: 300,
+        margin: {t: 30, l: 40, r: 40, b: 80}
+    };
+
+    Plotly.newPlot(chartId, [trace1, trace2], layout);
+}
+
+function updateCharts(data) {
+    if (data) {
+        createBarChart(data.metricas_instructor, 'instructor-chart', 'Desempeño por Instructor');
+        createBarChart(data.metricas_curso, 'curso-chart', 'Desempeño por Curso');
+        createBarChart(data.metricas_tecnico, 'tecnico-chart', 'Desempeño por Técnico');
+    }
+}
+
+// Actualizar datos cada 5 minutos
+updateMetrics();
+setInterval(updateMetrics, 300000);
+</script>
+{% endblock %} 

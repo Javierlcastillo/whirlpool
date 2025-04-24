@@ -8,8 +8,8 @@ from django.conf import settings
 
 from .api_views import (
     CourseViewSet, RegionViewSet, InstructorViewSet,
-    QuestionViewSet, AnswerViewSet, SectionViewSet,
-    CourseApplicationViewSet
+    DesempenoViewSet, QuestionViewSet, AnswerViewSet,
+    SectionViewSet, CourseApplicationViewSet
 )
 
 # Configuración de Swagger/OpenAPI
@@ -31,10 +31,11 @@ router = DefaultRouter()
 router.register(r'courses', CourseViewSet)
 router.register(r'regions', RegionViewSet)
 router.register(r'instructors', InstructorViewSet)
+router.register(r'desempenos', DesempenoViewSet)
 router.register(r'questions', QuestionViewSet)
 router.register(r'answers', AnswerViewSet)
 router.register(r'sections', SectionViewSet)
-router.register(r'course-applications', CourseApplicationViewSet, basename='courseapplication')
+router.register(r'applications', CourseApplicationViewSet)
 
 urlpatterns = [
     # Endpoints de la API

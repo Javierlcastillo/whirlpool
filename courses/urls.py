@@ -15,7 +15,10 @@ from .views import (
     # New course management URLs
     course_base_edit, course_sections_edit, course_section_add, course_section_edit,
     course_section_delete, course_questions_edit, course_question_add, course_question_edit,
-    course_question_delete, course_content_order, course_section_move, course_question_move
+    course_question_delete, course_content_order, course_section_move, course_question_move,
+    toggle_course_status,
+    # Metrics view
+    MetricsDashboardView
 )
 
 app_name = 'courses'
@@ -49,6 +52,7 @@ urlpatterns = [
     path('<slug:slug>/add-region/', add_region_to_course, name='course-add-region'),
     path('<slug:slug>/remove-region/<int:region_id>/', remove_region_from_course, name='course-remove-region'),
     path('<slug:slug>/view-content/', course_view_content, name='course_view_content'),
+    path('<slug:slug>/toggle-status/', toggle_course_status, name='toggle_course_status'),
 
     # New course management URLs
     path('<slug:slug>/edit/', course_base_edit, name='course-edit'),
@@ -63,4 +67,7 @@ urlpatterns = [
     path('<slug:slug>/order/', course_content_order, name='course-content-order'),
     path('<slug:slug>/section/<int:section_id>/move/<str:direction>/', course_section_move, name='course-section-move'),
     path('<slug:slug>/question/<int:question_id>/move/<str:direction>/', course_question_move, name='course-question-move'),
+
+    # Metrics URLs
+    path('metricas/dashboard/', MetricsDashboardView.as_view(), name='metrics-dashboard'),
 ]

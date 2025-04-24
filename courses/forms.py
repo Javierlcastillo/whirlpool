@@ -221,4 +221,24 @@ class DesempenoForm(forms.ModelForm):
     
     class Meta:
         model = Desempeno
-        fields = ['technician', 'course', 'puntuacion', 'estado']
+        fields = [
+            'technician',
+            'course',
+            'duracion_total',
+            'respuestas_incorrectas',
+            'aprobado'
+        ]
+        widgets = {
+            'technician': forms.Select(attrs={'class': 'form-control'}),
+            'course': forms.Select(attrs={'class': 'form-control'}),
+            'duracion_total': forms.NumberInput(attrs={'class': 'form-control'}),
+            'respuestas_incorrectas': forms.NumberInput(attrs={'class': 'form-control'}),
+            'aprobado': forms.CheckboxInput(attrs={'class': 'form-check-input'})
+        }
+        labels = {
+            'technician': 'Técnico',
+            'course': 'Curso',
+            'duracion_total': 'Duración Total (minutos)',
+            'respuestas_incorrectas': 'Respuestas Incorrectas',
+            'aprobado': '¿Aprobado?'
+        }

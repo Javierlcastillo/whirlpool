@@ -369,16 +369,9 @@ class Answer(models.Model):
 
 class Desempeno(models.Model):
     """Modelo para registrar el desempeño de los técnicos en los cursos."""
-    STATUS_CHOICES = [
-        ('started', 'Iniciado'),
-        ('in_progress', 'En Progreso'),
-        ('completed', 'Completado'),
-        ('failed', 'Reprobado'),
-    ]
-    
     id = models.AutoField(primary_key=True)
     technician = models.ForeignKey(
-        'users.Technician',  # Referencia por string para evitar importación circular
+        'users.Technician',
         on_delete=models.CASCADE,
         related_name='desempenos',
         verbose_name='Técnico'
@@ -389,28 +382,40 @@ class Desempeno(models.Model):
         related_name='desempenos',
         verbose_name='Curso'
     )
-    puntuacion = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
+    instructor = models.ForeignKey(
+        Instructor,
+        on_delete=models.SET_NULL,
         null=True,
-        blank=True,
-        verbose_name='Puntuación'
+        related_name='desempenos_instructor',
+        verbose_name='Instructor'
     )
     fecha = models.DateTimeField(auto_now_add=True, verbose_name='Fecha')
-    estado = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default='started',
-        verbose_name='Estado'
+    duracion_total = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Duración Total (minutos)'
+    )
+    respuestas_incorrectas = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Respuestas Incorrectas'
+    )
+    aprobado = models.BooleanField(
+        default=False,
+        verbose_name='Aprobado'
     )
     
     class Meta:
         verbose_name = 'Desempeño'
         verbose_name_plural = 'Desempeños'
-        unique_together = ['technician', 'course']
+        ordering = ['-fecha']  # Ordenar por fecha descendente
     
     def __str__(self):
-        return f"{self.technician} - {self.course}"
+        return f"{self.technician} - {self.course} ({'Aprobado' if self.aprobado else 'Reprobado'})"
+    
+    def save(self, *args, **kwargs):
+        # Asignar automáticamente el instructor del curso si no se especifica
+        if not self.instructor and self.course.instructor:
+            self.instructor = self.course.instructor
+        super().save(*args, **kwargs)
 
 class UserCourseProgress(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='course_progress')
