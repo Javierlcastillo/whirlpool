@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.forms import inlineformset_factory
+from django.db import transaction
 from django.db.models import Q
 from django.urls import reverse_lazy
 from django.http import JsonResponse
@@ -88,8 +89,21 @@ class CourseDetailView(LoginRequiredMixin, DetailView):
         questions = Question.objects.filter(course=course).prefetch_related('answers')
         context['questions'] = questions
         
-        # Obtener secciones
-        sections = Section.objects.filter(course=course).order_by('order')
+        # Obtener secciones ordenadas por CourseContentOrder
+        section_orders = CourseContentOrder.objects.filter(
+            course=course,
+            content_type='section'
+        ).order_by('order')
+        
+        # Obtener las secciones en el orden correcto
+        sections = []
+        for order in section_orders:
+            try:
+                section = Section.objects.get(id=order.content_id)
+                sections.append(section)
+            except Section.DoesNotExist:
+                continue
+                
         context['sections'] = sections
         
         # Obtener aplicaciones del curso a regiones
@@ -826,27 +840,52 @@ def course_content_order(request, slug):
             data = json.loads(request.body)
             new_order = data.get('order', [])
             
-            # Actualizar el orden de cada elemento
-            for i, item in enumerate(new_order):
+            # Validar que todos los elementos existan
+            for item in new_order:
                 item_id = item.get('id')
                 item_type = item.get('type')
                 
-                # Buscar el registro o crearlo si no existe
-                content_order, created = CourseContentOrder.objects.get_or_create(
-                    course=course,
-                    content_type=item_type,
-                    content_id=item_id,
-                    defaults={'order': i}
-                )
-                
-                # Si ya existía, actualizar el orden
-                if not created:
-                    content_order.order = i
-                    content_order.save()
+                if item_type == 'section':
+                    if not Section.objects.filter(id=item_id, course=course).exists():
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': f'Sección con ID {item_id} no encontrada'
+                        }, status=400)
+                elif item_type == 'question':
+                    if not Question.objects.filter(id=item_id, course=course).exists():
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': f'Pregunta con ID {item_id} no encontrada'
+                        }, status=400)
             
-            return JsonResponse({'status': 'success', 'message': 'Orden actualizado con éxito.'})
+            # Actualizar el orden de cada elemento
+            with transaction.atomic():
+                # Eliminar órdenes existentes para este curso
+                CourseContentOrder.objects.filter(course=course).delete()
+                
+                # Crear nuevos registros de orden
+                for i, item in enumerate(new_order):
+                    CourseContentOrder.objects.create(
+                        course=course,
+                        content_type=item['type'],
+                        content_id=item['id'],
+                        order=i
+                    )
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Orden actualizado con éxito.'
+            })
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Formato JSON inválido'
+            }, status=400)
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
     
     # Obtener todos los elementos de contenido ordenados
     content_items = course.get_ordered_content()

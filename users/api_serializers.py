@@ -40,4 +40,33 @@ class TechnicianAuthSerializer(serializers.Serializer):
             else:
                 raise serializers.ValidationError('Credenciales incorrectas.')
         else:
-            raise serializers.ValidationError('Debe proporcionar número de empleado y contraseña.') 
+            raise serializers.ValidationError('Debe proporcionar número de empleado y contraseña.')
+
+class TechnicianSerializer(serializers.ModelSerializer):
+    """
+    Serializer para el modelo Technician.
+    
+    Campos:
+    - id: Identificador único del técnico
+    - numero_empleado: Número de empleado del técnico
+    - name: Nombre del técnico
+    - region: Información de la región asociada
+    - is_active: Indica si el técnico está activo
+    """
+    name = serializers.SerializerMethodField()
+    region = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Technician
+        fields = ['id', 'numero_empleado', 'name', 'region', 'is_active', 'created_at', 'updated_at']
+    
+    def get_name(self, obj):
+        return obj.user.get_full_name()
+    
+    def get_region(self, obj):
+        if obj.region:
+            return {
+                'id': obj.region.id,
+                'nombre': obj.region.nombre
+            }
+        return None 

@@ -11,6 +11,7 @@ from .api_serializers import (
     CourseSerializer, 
     CourseDetailSerializer,
     RegionSerializer,
+    RegionDetailSerializer,
     InstructorSerializer,
     DesempenoSerializer,
     QuestionSerializer,
@@ -196,6 +197,20 @@ class RegionViewSet(viewsets.ModelViewSet):
     ordering_fields = ['nombre']
     ordering = ['nombre']
     permission_classes = [IsAdminUserOrReadOnly]
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return RegionDetailSerializer
+        return RegionSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.action == 'retrieve':
+            queryset = queryset.prefetch_related(
+                'courses',
+                'instructors'
+            )
+        return queryset
 
 class InstructorViewSet(viewsets.ModelViewSet):
     """

@@ -83,23 +83,24 @@
         <!-- Cursos del técnico -->
         <div class="card">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Cursos Asignados</h5>
-                <span class="badge bg-primary">{{ technician.courses_teaching.count }} cursos</span>
+                <h5 class="mb-0">Cursos Disponibles en la Región</h5>
+                <span class="badge bg-primary">{{ available_courses|length }} cursos</span>
             </div>
             <div class="card-body p-0">
-                {% if technician.courses_teaching.all %}
+                {% if available_courses %}
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
                         <thead class="table-dark">
                             <tr>
                                 <th>Nombre</th>
-                                <th>Categoría</th>
+                                <th>Instructor</th>
                                 <th>Duración</th>
+                                <th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for course in technician.courses_teaching.all %}
+                            {% for course in available_courses %}
                             <tr>
                                 <td>
                                     <a href="{% url 'courses:course-detail' course.slug %}" class="text-decoration-none">
@@ -107,11 +108,20 @@
                                     </a>
                                 </td>
                                 <td>
-                                    <span class="badge bg-{{ course.get_category_class }}">
-                                        {{ course.get_category_display }}
-                                    </span>
+                                    {% if course.instructor %}
+                                        {{ course.instructor.name }}
+                                    {% else %}
+                                        <span class="text-muted">Sin asignar</span>
+                                    {% endif %}
                                 </td>
                                 <td>{{ course.duration_hours }} horas</td>
+                                <td>
+                                    {% if course.is_active %}
+                                        <span class="badge bg-success">Activo</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactivo</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     <a href="{% url 'courses:course-detail' course.slug %}" class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-eye"></i> Ver
@@ -124,7 +134,11 @@
                 </div>
                 {% else %}
                 <div class="text-center py-4">
-                    <p class="text-muted mb-0">No hay cursos asignados a este técnico.</p>
+                    {% if technician.region %}
+                        <p class="text-muted mb-0">No hay cursos disponibles en la región {{ technician.region.nombre }}.</p>
+                    {% else %}
+                        <p class="text-muted mb-0">El técnico no tiene una región asignada.</p>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>

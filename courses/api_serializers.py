@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from .models import Course, Desempeno, Region, Instructor, Question, Answer, Section, CourseApplication
+from django.db.models import Q
 
 class RegionSerializer(serializers.ModelSerializer):
     """
@@ -13,6 +14,71 @@ class RegionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Region
         fields = ['id', 'nombre']
+
+class RegionDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer detallado para el modelo Region.
+    
+    Incluye:
+    - Información básica de la región
+    - Lista de cursos aplicados con información relevante
+    - Lista de instructores con información básica
+    - Lista de técnicos con información básica
+    - Conteos de cada tipo de elemento
+    """
+    courses = serializers.SerializerMethodField()
+    instructors = serializers.SerializerMethodField()
+    technicians = serializers.SerializerMethodField()
+    stats = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Region
+        fields = ['id', 'nombre', 'courses', 'instructors', 'technicians', 'stats']
+    
+    def get_courses(self, obj):
+        courses = Course.objects.filter(
+            Q(region=obj) | 
+            Q(applications__region=obj)
+        ).distinct()
+        return [{
+            'id': course.id,
+            'name': course.name,
+            'slug': course.slug,
+            'description': course.description,
+            'instructor': course.instructor.name if course.instructor else None,
+            'duration_hours': course.duration_hours,
+            'is_active': course.is_active
+        } for course in courses]
+    
+    def get_instructors(self, obj):
+        instructors = Instructor.objects.filter(region=obj)
+        return [{
+            'id': instructor.id,
+            'name': instructor.name,
+            'courses_count': instructor.courses_teaching.count()
+        } for instructor in instructors]
+    
+    def get_technicians(self, obj):
+        from users.models import Technician
+        technicians = Technician.objects.filter(region=obj)
+        return [{
+            'id': t.id,
+            'name': t.user.get_full_name(),
+            'numero_empleado': t.numero_empleado,
+            'is_active': t.is_active
+        } for t in technicians]
+    
+    def get_stats(self, obj):
+        from users.models import Technician
+        courses = Course.objects.filter(
+            Q(region=obj) | 
+            Q(applications__region=obj)
+        ).distinct()
+        return {
+            'courses_count': courses.count(),
+            'instructors_count': obj.instructors.count(),
+            'technicians_count': Technician.objects.filter(region=obj).count()
+        }
 
 class InstructorSerializer(serializers.ModelSerializer):
     """

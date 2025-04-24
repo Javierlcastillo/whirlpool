@@ -60,8 +60,11 @@ class TechnicianDetailView(SuperuserRequiredMixin, DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Añadir cursos que imparte el técnico
-        context['courses_teaching'] = self.object.courses_teaching.all()
+        # Obtener los cursos disponibles en la región del técnico
+        if self.object.region:
+            context['available_courses'] = self.object.region.courses.all()
+        else:
+            context['available_courses'] = []
         return context
 
 class TechnicianCreateView(LoginRequiredMixin, CreateView):
