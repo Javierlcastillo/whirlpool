@@ -32,7 +32,7 @@
                     <div class="col-md-3">
                         <div class="card bg-primary text-white metric-card">
                             <div class="card-body text-center">
-                                <h3 class="display-4" id="total-cursos">-</h3>
+                                <h3 class="display-4">{{ total_desempenos|default:"0" }}</h3>
                                 <p class="mb-0">Cursos Completados</p>
                             </div>
                         </div>
@@ -40,7 +40,7 @@
                     <div class="col-md-3">
                         <div class="card bg-success text-white metric-card">
                             <div class="card-body text-center">
-                                <h3 class="display-4" id="cursos-aprobados">-</h3>
+                                <h3 class="display-4">{{ completed_desempenos|default:"0" }}</h3>
                                 <p class="mb-0">Cursos Aprobados</p>
                             </div>
                         </div>
@@ -48,7 +48,7 @@
                     <div class="col-md-3">
                         <div class="card bg-danger text-white metric-card">
                             <div class="card-body text-center">
-                                <h3 class="display-4" id="cursos-reprobados">-</h3>
+                                <h3 class="display-4">{{ failed_desempenos|default:"0" }}</h3>
                                 <p class="mb-0">Cursos Reprobados</p>
                             </div>
                         </div>
@@ -56,8 +56,8 @@
                     <div class="col-md-3">
                         <div class="card bg-info text-white metric-card">
                             <div class="card-body text-center">
-                                <h3 class="display-4" id="duracion-promedio">-</h3>
-                                <p class="mb-0">Duración Promedio (min)</p>
+                                <h3 class="display-4">{{ approval_rate|floatformat:1 }}%</h3>
+                                <p class="mb-0">Tasa de Aprobación</p>
                             </div>
                         </div>
                     </div>
@@ -90,7 +90,17 @@
                                 <th>Duración Promedio</th>
                             </tr>
                         </thead>
-                        <tbody></tbody>
+                        <tbody>
+                            {% for instructor, metrics in instructor_metrics.items %}
+                            <tr>
+                                <td>{{ instructor }}</td>
+                                <td>{{ metrics.aprobados|default:"0" }}</td>
+                                <td>{{ metrics.reprobados|default:"0" }}</td>
+                                <td>{{ metrics.incorrectas|default:"0" }}</td>
+                                <td>{{ metrics.duracion_promedio|floatformat:1 }} min</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -121,7 +131,17 @@
                                 <th>Duración Promedio</th>
                             </tr>
                         </thead>
-                        <tbody></tbody>
+                        <tbody>
+                            {% for course, metrics in course_metrics.items %}
+                            <tr>
+                                <td>{{ course }}</td>
+                                <td>{{ metrics.aprobados|default:"0" }}</td>
+                                <td>{{ metrics.reprobados|default:"0" }}</td>
+                                <td>{{ metrics.incorrectas|default:"0" }}</td>
+                                <td>{{ metrics.duracion_promedio|floatformat:1 }} min</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -152,7 +172,17 @@
                                 <th>Duración Promedio</th>
                             </tr>
                         </thead>
-                        <tbody></tbody>
+                        <tbody>
+                            {% for technician, metrics in technician_metrics.items %}
+                            <tr>
+                                <td>{{ technician }}</td>
+                                <td>{{ metrics.aprobados|default:"0" }}</td>
+                                <td>{{ metrics.reprobados|default:"0" }}</td>
+                                <td>{{ metrics.incorrectas|default:"0" }}</td>
+                                <td>{{ metrics.duracion_promedio|floatformat:1 }} min</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -183,44 +213,10 @@ function formatNumber(num) {
     });
 }
 
-function updateMetrics() {
-    fetch('/api/desempenos/metricas/')
-        .then(response => response.json())
-        .then(data => {
-            // Actualizar métricas generales
-            document.getElementById('total-cursos').textContent = formatNumber(data.total_cursos_completados);
-            document.getElementById('cursos-aprobados').textContent = formatNumber(data.cursos_aprobados);
-            document.getElementById('cursos-reprobados').textContent = formatNumber(data.cursos_reprobados);
-            document.getElementById('duracion-promedio').textContent = formatNumber(data.duracion_promedio);
-
-            // Actualizar tablas
-            updateTable('instructor-table', data.metricas_instructor);
-            updateTable('curso-table', data.metricas_curso);
-            updateTable('tecnico-table', data.metricas_tecnico);
-
-            // Actualizar gráficos
-            updateCharts(data);
-        });
-}
-
-function updateTable(tableId, data) {
-    const tbody = document.getElementById(tableId).getElementsByTagName('tbody')[0];
-    tbody.innerHTML = '';
-    
-    Object.entries(data).forEach(([name, metrics]) => {
-        const row = tbody.insertRow();
-        row.insertCell().textContent = name;
-        row.insertCell().textContent = formatNumber(metrics.aprobados || metrics.cursos_aprobados);
-        row.insertCell().textContent = formatNumber(metrics.reprobados || metrics.cursos_reprobados);
-        row.insertCell().textContent = formatNumber(metrics.incorrectas || metrics.respuestas_incorrectas);
-        row.insertCell().textContent = formatNumber(metrics.duracion_promedio);
-    });
-}
-
 function createBarChart(data, chartId, title) {
     const names = Object.keys(data);
-    const aprobados = names.map(name => data[name].aprobados || data[name].cursos_aprobados);
-    const reprobados = names.map(name => data[name].reprobados || data[name].cursos_reprobados);
+    const aprobados = names.map(name => data[name].aprobados || 0);
+    const reprobados = names.map(name => data[name].reprobados || 0);
 
     const trace1 = {
         x: names,
@@ -248,16 +244,17 @@ function createBarChart(data, chartId, title) {
     Plotly.newPlot(chartId, [trace1, trace2], layout);
 }
 
-function updateCharts(data) {
-    if (data) {
-        createBarChart(data.metricas_instructor, 'instructor-chart', 'Desempeño por Instructor');
-        createBarChart(data.metricas_curso, 'curso-chart', 'Desempeño por Curso');
-        createBarChart(data.metricas_tecnico, 'tecnico-chart', 'Desempeño por Técnico');
-    }
+function updateCharts() {
+    const instructorData = {{ instructor_metrics|safe }};
+    const courseData = {{ course_metrics|safe }};
+    const technicianData = {{ technician_metrics|safe }};
+
+    createBarChart(instructorData, 'instructor-chart', 'Desempeño por Instructor');
+    createBarChart(courseData, 'curso-chart', 'Desempeño por Curso');
+    createBarChart(technicianData, 'tecnico-chart', 'Desempeño por Técnico');
 }
 
-// Actualizar datos cada 5 minutos
-updateMetrics();
-setInterval(updateMetrics, 300000);
+// Inicializar gráficos al cargar la página
+document.addEventListener('DOMContentLoaded', updateCharts);
 </script>
 {% endblock %} 

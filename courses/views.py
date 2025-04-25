@@ -5,7 +5,7 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.forms import inlineformset_factory
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Sum, Avg
 from django.urls import reverse_lazy
 from django.http import JsonResponse
 import json
@@ -1068,4 +1068,55 @@ class MetricsDashboardView(LoginRequiredMixin, TemplateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        
+        # Obtener métricas generales
+        total_desempenos = Desempeno.objects.count()
+        completed_desempenos = Desempeno.objects.filter(aprobado=True).count()
+        failed_desempenos = Desempeno.objects.filter(aprobado=False).count()
+        approval_rate = (completed_desempenos / total_desempenos * 100) if total_desempenos > 0 else 0
+        
+        # Obtener métricas por instructor
+        instructor_metrics = {}
+        for instructor in Instructor.objects.all():
+            desempenos = Desempeno.objects.filter(instructor=instructor)
+            instructor_metrics[instructor.name] = {
+                'aprobados': desempenos.filter(aprobado=True).count(),
+                'reprobados': desempenos.filter(aprobado=False).count(),
+                'incorrectas': desempenos.aggregate(total=Sum('respuestas_incorrectas'))['total'] or 0,
+                'duracion_promedio': desempenos.aggregate(avg=Avg('duracion_total'))['avg'] or 0
+            }
+        
+        # Obtener métricas por curso
+        course_metrics = {}
+        for course in Course.objects.all():
+            desempenos = Desempeno.objects.filter(course=course)
+            course_metrics[course.name] = {
+                'aprobados': desempenos.filter(aprobado=True).count(),
+                'reprobados': desempenos.filter(aprobado=False).count(),
+                'incorrectas': desempenos.aggregate(total=Sum('respuestas_incorrectas'))['total'] or 0,
+                'duracion_promedio': desempenos.aggregate(avg=Avg('duracion_total'))['avg'] or 0
+            }
+        
+        # Obtener métricas por técnico
+        technician_metrics = {}
+        for technician in Technician.objects.all():
+            desempenos = Desempeno.objects.filter(technician=technician)
+            technician_metrics[technician.user.get_full_name()] = {
+                'aprobados': desempenos.filter(aprobado=True).count(),
+                'reprobados': desempenos.filter(aprobado=False).count(),
+                'incorrectas': desempenos.aggregate(total=Sum('respuestas_incorrectas'))['total'] or 0,
+                'duracion_promedio': desempenos.aggregate(avg=Avg('duracion_total'))['avg'] or 0
+            }
+        
+        # Agregar métricas al contexto
+        context.update({
+            'total_desempenos': total_desempenos,
+            'completed_desempenos': completed_desempenos,
+            'failed_desempenos': failed_desempenos,
+            'approval_rate': approval_rate,
+            'instructor_metrics': instructor_metrics,
+            'course_metrics': course_metrics,
+            'technician_metrics': technician_metrics
+        })
+        
         return context
