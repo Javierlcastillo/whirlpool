@@ -8,34 +8,24 @@ from .models import Section, Question, CourseContentOrder
 def create_section_order(sender, instance, created, **kwargs):
     """Crear o actualizar el orden de una sección cuando se guarda."""
     if created:
-        # Obtener el máximo orden existente
-        max_order = CourseContentOrder.objects.filter(course=instance.course).aggregate(models.Max('order'))
-        next_order = 1 if max_order['order__max'] is None else max_order['order__max'] + 1
-        
-        print(f"SIGNAL: Creating order for Section {instance.id} with order {next_order}")
-        
-        # Crear registro de orden con un valor de orden específico
+        # Crear registro de orden sin especificar explícitamente el orden
+        # Dejar que el método save() del modelo CourseContentOrder calcule automáticamente el orden
         CourseContentOrder.objects.create(
             course=instance.course,
             content_type='section',
-            content_id=instance.id,
-            order=next_order  # Asignar explícitamente el orden
+            content_id=instance.id
+            # No incluimos el order, dejando que el modelo lo calcule automáticamente
         )
 
 @receiver(post_save, sender=Question)
 def create_question_order(sender, instance, created, **kwargs):
     """Crear o actualizar el orden de una pregunta cuando se guarda."""
     if created:
-        # Obtener el máximo orden existente
-        max_order = CourseContentOrder.objects.filter(course=instance.course).aggregate(models.Max('order'))
-        next_order = 1 if max_order['order__max'] is None else max_order['order__max'] + 1
-        
-        print(f"SIGNAL: Creating order for Question {instance.id} with order {next_order}")
-        
-        # Crear registro de orden con un valor de orden específico
+        # Crear registro de orden sin especificar explícitamente el orden
+        # Dejar que el método save() del modelo CourseContentOrder calcule automáticamente el orden
         CourseContentOrder.objects.create(
             course=instance.course,
             content_type='question',
-            content_id=instance.id,
-            order=next_order  # Asignar explícitamente el orden
+            content_id=instance.id
+            # No incluimos el order, dejando que el modelo lo calcule automáticamente
         ) 

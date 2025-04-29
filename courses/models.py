@@ -159,49 +159,61 @@ class Course(models.Model):
     def sync_content_order(self):
         """
         Sincroniza los registros de orden para las secciones y preguntas de este curso.
-        Útil cuando se migra de la vieja estructura a la nueva.
+        Mantiene el orden existente en lugar de reconstruirlo completamente.
         """
         # Obtener todos los elementos existentes
         sections = self.sections.all()
         questions = self.questions.all()
         
-        # Eliminar todos los registros de orden existentes
-        CourseContentOrder.objects.filter(course=self).delete()
+        # Obtener elementos con orden actual
+        existing_orders = dict(
+            CourseContentOrder.objects.filter(course=self).values_list(
+                'content_type', 'content_id', 'order'
+            ).annotate(combined_key=models.functions.Concat(
+                'content_type', models.Value('_'), models.functions.Cast('content_id', models.CharField())
+            )).values_list('combined_key', 'order')
+        )
         
-        # Crear nuevos registros de orden
-        order_counter = 0
+        # Crear un conjunto de todos los elementos actuales
+        actual_items = set()
+        for section in sections:
+            actual_items.add(f"section_{section.id}")
+        for question in questions:
+            actual_items.add(f"question_{question.id}")
         
-        # Alternar entre secciones y preguntas, ordenando por ID por simplicidad
-        # Esto asegura que se mezclen en la secuencia aproximada de su creación
-        section_list = list(sections.order_by('id'))
-        question_list = list(questions.order_by('id'))
+        # Crear un conjunto de elementos con orden actual
+        ordered_items = set(existing_orders.keys())
         
-        # Determinar la lista más larga
-        max_items = max(len(section_list), len(question_list))
+        # Identificar elementos sin orden
+        unordered_items = actual_items - ordered_items
         
-        # Alternar entre secciones y preguntas
-        for i in range(max_items):
-            # Agregar sección si existe
-            if i < len(section_list):
-                CourseContentOrder.objects.create(
-                    course=self,
-                    content_type='section',
-                    content_id=section_list[i].id,
-                    order=order_counter
-                )
-                order_counter += 1
-            
-            # Agregar pregunta si existe
-            if i < len(question_list):
-                CourseContentOrder.objects.create(
-                    course=self,
-                    content_type='question',
-                    content_id=question_list[i].id,
-                    order=order_counter
-                )
-                order_counter += 1
+        # Elementos a eliminar (ya no existen pero tienen orden)
+        to_delete = ordered_items - actual_items
         
-        return order_counter  # Devuelve el número de elementos sincronizados
+        # Eliminar órdenes para elementos que ya no existen
+        for item_key in to_delete:
+            content_type, content_id = item_key.split('_', 1)
+            CourseContentOrder.objects.filter(
+                course=self,
+                content_type=content_type,
+                content_id=int(content_id)
+            ).delete()
+        
+        # Obtener el máximo orden existente
+        max_order = CourseContentOrder.objects.filter(course=self).aggregate(models.Max('order'))['order__max'] or 0
+        
+        # Crear órdenes para elementos sin orden
+        for item_key in unordered_items:
+            content_type, content_id = item_key.split('_', 1)
+            max_order += 1
+            CourseContentOrder.objects.create(
+                course=self,
+                content_type=content_type,
+                content_id=int(content_id),
+                order=max_order
+            )
+        
+        return len(actual_items)  # Devuelve el número de elementos sincronizados
 
 class CourseApplication(models.Model):
     """Modelo para aplicación de cursos a regiones."""
