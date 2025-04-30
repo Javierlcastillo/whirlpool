@@ -23,7 +23,26 @@
     .table > tfoot > tr > th,
     .table > thead > tr > td,
     .table > thead > tr > th {
-        vertical-align: top;
+        vertical-align: top !important;
+    }
+    /* Estilos para tablas en tema oscuro */
+    .table {
+        background-color: #2a2a2a !important;
+        color: #ffffff !important;
+    }
+    .table thead th {
+        background-color: #1a1a1a !important;
+        color: #ffffff !important;
+        border-bottom: 2px solid #3a3a3a !important;
+    }
+    .table tbody tr {
+        background-color: #2a2a2a !important;
+    }
+    .table tbody tr:hover {
+        background-color: #3a3a3a !important;
+    }
+    .table td, .table th {
+        border-color: #3a3a3a !important;
     }
 </style>
 {% endblock %}
@@ -93,8 +112,10 @@
                         <thead>
                             <tr>
                                 <th>Instructor</th>
+                                <th>Total Cursos</th>
                                 <th>Aprobados</th>
                                 <th>Reprobados</th>
+                                <th>Tasa Aprobación</th>
                                 <th>Resp. Incorrectas</th>
                                 <th>Duración Promedio</th>
                             </tr>
@@ -103,8 +124,16 @@
                             {% for instructor, metrics in instructor_metrics.items %}
                             <tr>
                                 <td>{{ instructor }}</td>
+                                <td>{{ metrics.aprobados|add:metrics.reprobados }}</td>
                                 <td>{{ metrics.aprobados|default:"0" }}</td>
                                 <td>{{ metrics.reprobados|default:"0" }}</td>
+                                <td>{% with total=metrics.aprobados|add:metrics.reprobados %}
+                                    {% if total > 0 %}
+                                        {{ metrics.aprobados|floatformat:0 }}/{{ total|floatformat:0 }}
+                                    {% else %}
+                                        0/0
+                                    {% endif %}
+                                {% endwith %}</td>
                                 <td>{{ metrics.incorrectas|default:"0" }}</td>
                                 <td>{{ metrics.duracion_promedio|floatformat:1 }} min</td>
                             </tr>
@@ -134,8 +163,10 @@
                         <thead>
                             <tr>
                                 <th>Curso</th>
+                                <th>Total Técnicos</th>
                                 <th>Aprobados</th>
                                 <th>Reprobados</th>
+                                <th>Tasa Aprobación</th>
                                 <th>Resp. Incorrectas</th>
                                 <th>Duración Promedio</th>
                             </tr>
@@ -144,8 +175,16 @@
                             {% for course, metrics in course_metrics.items %}
                             <tr>
                                 <td>{{ course }}</td>
+                                <td>{{ metrics.aprobados|add:metrics.reprobados }}</td>
                                 <td>{{ metrics.aprobados|default:"0" }}</td>
                                 <td>{{ metrics.reprobados|default:"0" }}</td>
+                                <td>{% with total=metrics.aprobados|add:metrics.reprobados %}
+                                    {% if total > 0 %}
+                                        {{ metrics.aprobados|floatformat:0 }}/{{ total|floatformat:0 }}
+                                    {% else %}
+                                        0/0
+                                    {% endif %}
+                                {% endwith %}</td>
                                 <td>{{ metrics.incorrectas|default:"0" }}</td>
                                 <td>{{ metrics.duracion_promedio|floatformat:1 }} min</td>
                             </tr>
@@ -175,8 +214,10 @@
                         <thead>
                             <tr>
                                 <th>Técnico</th>
+                                <th>Total Cursos</th>
                                 <th>Aprobados</th>
                                 <th>Reprobados</th>
+                                <th>Tasa Aprobación</th>
                                 <th>Resp. Incorrectas</th>
                                 <th>Duración Promedio</th>
                             </tr>
@@ -185,8 +226,16 @@
                             {% for technician, metrics in technician_metrics.items %}
                             <tr>
                                 <td>{{ technician }}</td>
+                                <td>{{ metrics.aprobados|add:metrics.reprobados }}</td>
                                 <td>{{ metrics.aprobados|default:"0" }}</td>
                                 <td>{{ metrics.reprobados|default:"0" }}</td>
+                                <td>{% with total=metrics.aprobados|add:metrics.reprobados %}
+                                    {% if total > 0 %}
+                                        {{ metrics.aprobados|floatformat:0 }}/{{ total|floatformat:0 }}
+                                    {% else %}
+                                        0/0
+                                    {% endif %}
+                                {% endwith %}</td>
                                 <td>{{ metrics.incorrectas|default:"0" }}</td>
                                 <td>{{ metrics.duracion_promedio|floatformat:1 }} min</td>
                             </tr>
@@ -201,7 +250,7 @@
 
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <script>
 // Variables para controlar el estado de los gráficos
@@ -247,7 +296,20 @@ function createBarChart(data, elementId, title) {
         title: title,
         barmode: 'group',
         height: 300,
-        margin: {t: 30, l: 40, r: 40, b: 80}
+        margin: {t: 30, l: 40, r: 40, b: 80},
+        paper_bgcolor: '#2a2a2a',
+        plot_bgcolor: '#2a2a2a',
+        font: {
+            color: '#ffffff'
+        },
+        xaxis: {
+            color: '#ffffff',
+            gridcolor: '#3a3a3a'
+        },
+        yaxis: {
+            color: '#ffffff',
+            gridcolor: '#3a3a3a'
+        }
     };
     
     Plotly.newPlot(elementId, [trace1, trace2], layout);
@@ -276,7 +338,11 @@ function createPieChart(data, elementId, title) {
     var layout = {
         title: title,
         height: 300,
-        margin: {t: 30, l: 0, r: 0, b: 0}
+        margin: {t: 30, l: 0, r: 0, b: 0},
+        paper_bgcolor: '#2a2a2a',
+        font: {
+            color: '#ffffff'
+        }
     };
     
     Plotly.newPlot(elementId, [trace], layout);
@@ -300,32 +366,31 @@ function updateChart(category) {
     }
     
     if (chartStates[category] === 'bar') {
-        createBarChart(data, elementId, title);
-    } else {
         createPieChart(data, elementId, title);
+        chartStates[category] = 'pie';
+    } else {
+        createBarChart(data, elementId, title);
+        chartStates[category] = 'bar';
     }
 }
 
 // Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
     // Inicializar gráficos
-    updateChart('instructor');
-    updateChart('curso');
-    updateChart('tecnico');
+    createBarChart(instructorData, 'instructor-chart', 'Desempeño por Instructor');
+    createBarChart(courseData, 'curso-chart', 'Desempeño por Curso');
+    createBarChart(technicianData, 'tecnico-chart', 'Desempeño por Técnico');
     
     // Configurar eventos de botones
     document.getElementById('toggle-instructor').addEventListener('click', function() {
-        chartStates['instructor'] = chartStates['instructor'] === 'bar' ? 'pie' : 'bar';
         updateChart('instructor');
     });
     
     document.getElementById('toggle-curso').addEventListener('click', function() {
-        chartStates['curso'] = chartStates['curso'] === 'bar' ? 'pie' : 'bar';
         updateChart('curso');
     });
     
     document.getElementById('toggle-tecnico').addEventListener('click', function() {
-        chartStates['tecnico'] = chartStates['tecnico'] === 'bar' ? 'pie' : 'bar';
         updateChart('tecnico');
     });
 });
