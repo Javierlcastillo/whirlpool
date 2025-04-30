@@ -264,6 +264,7 @@ class CourseContent(models.Model):
 
 class Section(CourseContent):
     """Modelo para secciones de cursos."""
+    id = models.AutoField(primary_key=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sections')
     title = models.CharField(max_length=200, verbose_name='Título')
     content = models.TextField(verbose_name='Contenido')
@@ -280,9 +281,18 @@ class Section(CourseContent):
     
     def __str__(self):
         return f"{self.title}"
+    
+    def save(self, *args, **kwargs):
+        if not self.pk:  # Si es un nuevo objeto
+            # Buscar el ID máximo actual
+            max_id = Section.objects.aggregate(models.Max('id'))['id__max'] or 0
+            # Siempre usar al menos 10000, o incrementar el máximo existente
+            self.id = max(10000, max_id + 1)
+        super().save(*args, **kwargs)
 
 class Question(CourseContent):
     """Modelo para preguntas de cursos."""
+    id = models.AutoField(primary_key=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='questions')
     QUESTION_TYPES = (
         ('multiple_choice', 'Opción Múltiple'),
@@ -311,6 +321,14 @@ class Question(CourseContent):
                 true_count = answers.filter(is_correct=True).count()
                 if true_count != 1:
                     raise ValidationError('Las preguntas de verdadero/falso deben tener exactamente una respuesta verdadera y una falsa.')
+
+    def save(self, *args, **kwargs):
+        if not self.pk:  # Si es un nuevo objeto
+            # Buscar el ID máximo actual
+            max_id = Question.objects.aggregate(models.Max('id'))['id__max'] or 0
+            # Siempre usar al menos 50000, o incrementar el máximo existente
+            self.id = max(50000, max_id + 1)
+        super().save(*args, **kwargs)
 
 class CourseContentOrder(models.Model):
     """Modelo para gestionar el orden de contenido en un curso."""
