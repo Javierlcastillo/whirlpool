@@ -17,13 +17,21 @@
             
             <div class="row">
                 <div class="col-md-12">
-                    {{ form.title|as_crispy_field }}
+                    <div class="form-group">
+                        <label for="id_title">Título de la sección</label>
+                        <input type="text" name="title" maxlength="34" class="textinput textInput form-control" required id="id_title">
+                        <small class="form-text text-muted">Máximo 34 caracteres</small>
+                    </div>
                 </div>
             </div>
             
             <div class="row">
                 <div class="col-md-12">
-                    {{ form.content|as_crispy_field }}
+                    <div class="form-group">
+                        <label for="id_content">Contenido de la sección</label>
+                        <textarea name="content" maxlength="531" class="textarea form-control" required id="id_content"></textarea>
+                        <small class="form-text text-muted">Máximo 531 caracteres</small>
+                    </div>
                 </div>
             </div>
             

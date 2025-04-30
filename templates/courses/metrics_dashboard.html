@@ -16,6 +16,15 @@
     .chart-container {
         height: 300px;
     }
+    /* Forzar alineación superior en tablas */
+    .table > tbody > tr > td,
+    .table > tbody > tr > th,
+    .table > tfoot > tr > td,
+    .table > tfoot > tr > th,
+    .table > thead > tr > td,
+    .table > thead > tr > th {
+        vertical-align: top;
+    }
 </style>
 {% endblock %}
 
@@ -73,7 +82,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">Métricas por Instructor</h4>
-                <button class="btn btn-sm btn-outline-primary" onclick="toggleChart('instructor-chart')">
+                <button class="btn btn-sm btn-outline-primary" id="toggle-instructor">
                     <i class="fas fa-chart-bar"></i> Alternar Vista
                 </button>
             </div>
@@ -114,7 +123,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">Métricas por Curso</h4>
-                <button class="btn btn-sm btn-outline-primary" onclick="toggleChart('curso-chart')">
+                <button class="btn btn-sm btn-outline-primary" id="toggle-curso">
                     <i class="fas fa-chart-bar"></i> Alternar Vista
                 </button>
             </div>
@@ -155,7 +164,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">Métricas por Técnico</h4>
-                <button class="btn btn-sm btn-outline-primary" onclick="toggleChart('tecnico-chart')">
+                <button class="btn btn-sm btn-outline-primary" id="toggle-tecnico">
                     <i class="fas fa-chart-bar"></i> Alternar Vista
                 </button>
             </div>
@@ -195,66 +204,130 @@
 {% block extra_js %}
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <script>
-let currentChartType = {
-    'instructor-chart': 'bar',
-    'curso-chart': 'bar',
-    'tecnico-chart': 'bar'
+// Variables para controlar el estado de los gráficos
+var chartStates = {
+    'instructor': 'bar',
+    'curso': 'bar',
+    'tecnico': 'bar'
 };
 
-function toggleChart(chartId) {
-    currentChartType[chartId] = currentChartType[chartId] === 'bar' ? 'pie' : 'bar';
-    updateCharts();
-}
+// Datos
+var instructorData = {{ instructor_metrics|safe }};
+var courseData = {{ course_metrics|safe }};
+var technicianData = {{ technician_metrics|safe }};
 
-function formatNumber(num) {
-    return num.toLocaleString('es-MX', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2
-    });
-}
-
-function createBarChart(data, chartId, title) {
-    const names = Object.keys(data);
-    const aprobados = names.map(name => data[name].aprobados || 0);
-    const reprobados = names.map(name => data[name].reprobados || 0);
-
-    const trace1 = {
+// Función para crear gráfico de barras
+function createBarChart(data, elementId, title) {
+    var names = Object.keys(data);
+    var aprobados = [];
+    var reprobados = [];
+    
+    for (var i = 0; i < names.length; i++) {
+        aprobados.push(data[names[i]].aprobados || 0);
+        reprobados.push(data[names[i]].reprobados || 0);
+    }
+    
+    var trace1 = {
         x: names,
         y: aprobados,
         name: 'Aprobados',
-        type: currentChartType[chartId],
+        type: 'bar',
         marker: {color: '#28a745'}
     };
-
-    const trace2 = {
+    
+    var trace2 = {
         x: names,
         y: reprobados,
         name: 'Reprobados',
-        type: currentChartType[chartId],
+        type: 'bar',
         marker: {color: '#dc3545'}
     };
-
-    const layout = {
+    
+    var layout = {
         title: title,
         barmode: 'group',
         height: 300,
         margin: {t: 30, l: 40, r: 40, b: 80}
     };
-
-    Plotly.newPlot(chartId, [trace1, trace2], layout);
+    
+    Plotly.newPlot(elementId, [trace1, trace2], layout);
 }
 
-function updateCharts() {
-    const instructorData = {{ instructor_metrics|safe }};
-    const courseData = {{ course_metrics|safe }};
-    const technicianData = {{ technician_metrics|safe }};
-
-    createBarChart(instructorData, 'instructor-chart', 'Desempeño por Instructor');
-    createBarChart(courseData, 'curso-chart', 'Desempeño por Curso');
-    createBarChart(technicianData, 'tecnico-chart', 'Desempeño por Técnico');
+// Función para crear gráfico circular
+function createPieChart(data, elementId, title) {
+    var names = Object.keys(data);
+    var totalAprobados = 0;
+    var totalReprobados = 0;
+    
+    for (var i = 0; i < names.length; i++) {
+        totalAprobados += data[names[i]].aprobados || 0;
+        totalReprobados += data[names[i]].reprobados || 0;
+    }
+    
+    var trace = {
+        values: [totalAprobados, totalReprobados],
+        labels: ['Aprobados', 'Reprobados'],
+        type: 'pie',
+        marker: {
+            colors: ['#28a745', '#dc3545']
+        }
+    };
+    
+    var layout = {
+        title: title,
+        height: 300,
+        margin: {t: 30, l: 0, r: 0, b: 0}
+    };
+    
+    Plotly.newPlot(elementId, [trace], layout);
 }
 
-// Inicializar gráficos al cargar la página
-document.addEventListener('DOMContentLoaded', updateCharts);
+// Función para actualizar un gráfico
+function updateChart(category) {
+    var elementId = category + '-chart';
+    var data;
+    var title;
+    
+    if (category === 'instructor') {
+        data = instructorData;
+        title = 'Desempeño por Instructor';
+    } else if (category === 'curso') {
+        data = courseData;
+        title = 'Desempeño por Curso';
+    } else if (category === 'tecnico') {
+        data = technicianData;
+        title = 'Desempeño por Técnico';
+    }
+    
+    if (chartStates[category] === 'bar') {
+        createBarChart(data, elementId, title);
+    } else {
+        createPieChart(data, elementId, title);
+    }
+}
+
+// Inicializar cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar gráficos
+    updateChart('instructor');
+    updateChart('curso');
+    updateChart('tecnico');
+    
+    // Configurar eventos de botones
+    document.getElementById('toggle-instructor').addEventListener('click', function() {
+        chartStates['instructor'] = chartStates['instructor'] === 'bar' ? 'pie' : 'bar';
+        updateChart('instructor');
+    });
+    
+    document.getElementById('toggle-curso').addEventListener('click', function() {
+        chartStates['curso'] = chartStates['curso'] === 'bar' ? 'pie' : 'bar';
+        updateChart('curso');
+    });
+    
+    document.getElementById('toggle-tecnico').addEventListener('click', function() {
+        chartStates['tecnico'] = chartStates['tecnico'] === 'bar' ? 'pie' : 'bar';
+        updateChart('tecnico');
+    });
+});
 </script>
 {% endblock %} 

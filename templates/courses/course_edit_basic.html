@@ -17,7 +17,11 @@
             
             <div class="row g-3">
                 <div class="col-md-12">
-                    {{ form.name|as_crispy_field }}
+                    <div class="form-group">
+                        <label for="id_name">Nombre del curso</label>
+                        <input type="text" name="name" maxlength="36" class="textinput textInput form-control" required id="id_name">
+                        <small class="form-text text-muted">Máximo 36 caracteres</small>
+                    </div>
                 </div>
             </div>
             
@@ -35,7 +39,11 @@
             
             <div class="row g-3">
                 <div class="col-md-12">
-                    {{ form.description|as_crispy_field }}
+                    <div class="form-group">
+                        <label for="id_description">Descripción del curso</label>
+                        <textarea name="description" maxlength="531" class="textarea form-control" required id="id_description"></textarea>
+                        <small class="form-text text-muted">Máximo 531 caracteres</small>
+                    </div>
                 </div>
             </div>
             
@@ -50,4 +58,12 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block extrahead %}
+<style>
+    #id_name {
+        maxlength: 36;
+    }
+</style>
 {% endblock %} 

@@ -29,6 +29,14 @@
     .answer-item .form-check {
         margin-top: 10px;
     }
+
+    #id_text {
+        maxlength: 234;
+    }
+
+    .answer-item input[type="text"] {
+        maxlength: 86;
+    }
 </style>
 {% endblock %}
 
@@ -43,7 +51,11 @@
             
             <div class="row">
                 <div class="col-md-12">
-                    {{ form.text|as_crispy_field }}
+                    <div class="form-group">
+                        <label for="id_text">Texto de la pregunta</label>
+                        <input type="text" name="text" maxlength="234" class="textinput textInput form-control" required id="id_text">
+                        <small class="form-text text-muted">Máximo 234 caracteres</small>
+                    </div>
                 </div>
             </div>
             
@@ -78,13 +90,14 @@
                             <input type="text" name="answers" class="form-control" 
                                    placeholder="Respuesta {{ i }}" 
                                    value="{% if answers %}{{ answers|get_item:forloop.counter0|get_item:'answer' }}{% endif %}"
-                                   required>
+                                   required maxlength="86">
                             <div class="form-check">
                                 <input type="checkbox" name="is_correct" value="{{ forloop.counter0 }}" 
                                        class="form-check-input" 
                                        {% if answers %}{% if answers|get_item:forloop.counter0|get_item:'is_correct' %}checked{% endif %}{% endif %}>
                                 <label class="form-check-label">Correcta</label>
                             </div>
+                            <small class="form-text text-muted">Máximo 86 caracteres</small>
                         </div>
                     {% endfor %}
                 {% endif %}
@@ -136,11 +149,12 @@
                 for (let i = 1; i <= 4; i++) {
                     answersContainer.insertAdjacentHTML('beforeend', `
                         <div class="answer-item">
-                            <input type="text" name="answers" class="form-control" placeholder="Respuesta ${i}" required>
+                            <input type="text" name="answers" class="form-control" placeholder="Respuesta ${i}" required maxlength="86">
                             <div class="form-check">
                                 <input type="checkbox" name="is_correct" value="${i-1}" class="form-check-input">
                                 <label class="form-check-label">Correcta</label>
                             </div>
+                            <small class="form-text text-muted">Máximo 86 caracteres</small>
                         </div>
                     `);
                 }

@@ -161,9 +161,12 @@ class Course(models.Model):
         Sincroniza los registros de orden para las secciones y preguntas de este curso.
         Mantiene el orden existente en lugar de reconstruirlo completamente.
         """
+        print(f"DEBUG: Starting sync_content_order for course {self.id}")
+        
         # Obtener todos los elementos existentes
         sections = self.sections.all()
         questions = self.questions.all()
+        print(f"DEBUG: Found {sections.count()} sections and {questions.count()} questions")
         
         # Obtener elementos con orden actual
         existing_orders = dict(
@@ -173,6 +176,7 @@ class Course(models.Model):
                 'content_type', models.Value('_'), models.functions.Cast('content_id', models.CharField())
             )).values_list('combined_key', 'order')
         )
+        print(f"DEBUG: Found {len(existing_orders)} existing orders")
         
         # Crear un conjunto de todos los elementos actuales
         actual_items = set()
@@ -180,15 +184,18 @@ class Course(models.Model):
             actual_items.add(f"section_{section.id}")
         for question in questions:
             actual_items.add(f"question_{question.id}")
+        print(f"DEBUG: Total actual items: {len(actual_items)}")
         
         # Crear un conjunto de elementos con orden actual
         ordered_items = set(existing_orders.keys())
         
         # Identificar elementos sin orden
         unordered_items = actual_items - ordered_items
+        print(f"DEBUG: Found {len(unordered_items)} items without order")
         
         # Elementos a eliminar (ya no existen pero tienen orden)
         to_delete = ordered_items - actual_items
+        print(f"DEBUG: Found {len(to_delete)} items to delete")
         
         # Eliminar órdenes para elementos que ya no existen
         for item_key in to_delete:
@@ -198,9 +205,11 @@ class Course(models.Model):
                 content_type=content_type,
                 content_id=int(content_id)
             ).delete()
+            print(f"DEBUG: Deleted order for {item_key}")
         
         # Obtener el máximo orden existente
         max_order = CourseContentOrder.objects.filter(course=self).aggregate(models.Max('order'))['order__max'] or 0
+        print(f"DEBUG: Current max order: {max_order}")
         
         # Crear órdenes para elementos sin orden
         for item_key in unordered_items:
@@ -212,7 +221,9 @@ class Course(models.Model):
                 content_id=int(content_id),
                 order=max_order
             )
+            print(f"DEBUG: Created order {max_order} for {item_key}")
         
+        print(f"DEBUG: Sync completed. Total items: {len(actual_items)}")
         return len(actual_items)  # Devuelve el número de elementos sincronizados
 
 class CourseApplication(models.Model):
@@ -323,12 +334,27 @@ class CourseContentOrder(models.Model):
         return f"{self.course} - {self.content_type} {self.content_id} - Orden {self.order}"
     
     def save(self, *args, **kwargs):
-        # Sólo calcular el orden si no se ha proporcionado explícitamente un valor diferente de 0
-        if not self.pk and self.order == 0:
-            # Si es un nuevo registro y el orden no se ha establecido, asignar el orden más alto + 1
-            max_order = CourseContentOrder.objects.filter(course=self.course).aggregate(models.Max('order'))['order__max']
-            self.order = (max_order or -1) + 1
-            print(f"MODEL: Calculated order for {self.content_type} {self.content_id}: {self.order}")
+        # Siempre calcular el orden para nuevos registros
+        if not self.pk:
+            # Obtener máximo orden y manejar correctamente el caso None
+            max_order_result = CourseContentOrder.objects.filter(course=self.course).aggregate(models.Max('order'))
+            max_order = max_order_result['order__max']
+            
+            # Si no hay registros existentes o el valor es None, comenzar desde 0
+            if max_order is None:
+                self.order = 1
+            else:
+                self.order = max_order + 1
+                
+            print(f"DEBUG: New order calculated for {self.content_type} {self.content_id}: {self.order}")
+        
+        # Para registros existentes, actualizar sólo si el orden es 0
+        elif self.order == 0:
+            max_order_result = CourseContentOrder.objects.filter(course=self.course).aggregate(models.Max('order'))
+            max_order = max_order_result['order__max'] or 0
+            self.order = max_order + 1
+            print(f"DEBUG: Updated order for existing {self.content_type} {self.content_id}: {self.order}")
+        
         super().save(*args, **kwargs)
     
     @property
